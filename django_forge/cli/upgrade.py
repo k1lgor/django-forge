@@ -68,7 +68,7 @@ def upgrade_project() -> None:
         else:
             output_name = template_path.relative_to(template_root)
         output_path = project_dir / output_name
-        if output_path.exists():
+        if output_path.exists() and output_name.name != ".forge.toml":
             existing_files.append((output_path, str(output_name)))
 
     if not existing_files:
