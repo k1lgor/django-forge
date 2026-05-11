@@ -51,7 +51,7 @@ def _print_frameworks() -> None:
 
         if len(fw) > 4 and fw[4]:
             console.print(
-                f"    [forge.accent]✦ {fw[4]}[/]"
+                f"    [forge.accent]* {fw[4]}[/]"
             )
 
         for line in fw[1:4]:
