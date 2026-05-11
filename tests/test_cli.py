@@ -55,11 +55,18 @@ def test_list_shows_available_options() -> None:
     assert "Core Layers" in result.stdout
 
 
-def test_add_stub_prints_message() -> None:
-    """Running `forge add celery` prints a friendly coming-soon message."""
+def test_add_rejects_non_forge_project() -> None:
+    """Running `forge add celery` outside a forge project shows error."""
     result = runner.invoke(app, ["add", "celery"])
     assert result.exit_code == 0
-    assert "Coming in v0.2" in result.stdout
+    assert "Not a forge project" in result.stdout
+
+
+def test_add_unknown_layer() -> None:
+    """Running `forge add foo` shows unknown layer error."""
+    result = runner.invoke(app, ["add", "foo"])
+    assert result.exit_code == 0
+    assert "Unknown layer" in result.stdout
 
 
 def test_import_version() -> None:
