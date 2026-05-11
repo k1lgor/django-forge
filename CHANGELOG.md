@@ -18,6 +18,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Already-installed detection: prints "Docker already installed."
   - Overwrite confirmation: lists affected files, prompts before patching
   - Context preservation: existing layers preserved when adding new ones
+- **`forge upgrade`** — Re-apply all templates to an existing project:
+  - Reads `.forge.toml`, builds full context from existing settings
+  - Lists files that will be overwritten, prompts for confirmation
+  - Updates `.forge.toml` with the latest version
+  - Safe on non-forge projects (shows clear error message)
+- **`django-debug-toolbar`** — Always included as a dev-only tool:
+  - Added to `dev.py` settings (`INSTALLED_APPS`, `MIDDLEWARE`, `INTERNAL_IPS`)
+  - URL route wired in `urls.py` (active only when `DEBUG=True`)
+  - Declared as dev dependency in generated `pyproject.toml`
+
+### Fixed
+
+- Package discovery: `MANIFEST.in` added to include dot-file templates in wheel
+- Module path matching: all 22 templates use `config.settings.base` prefix
+- Build backend: `setuptools.backends._legacy` → `setuptools.build_meta`
+- Allauth deprecation: migrated to `ACCOUNT_LOGIN_METHODS` API
+- Missing runtime dependency: `tomli` added for `.forge.toml` parsing
+- Package discovery: `[tool.setuptools.packages.find]` include rule for flat layout
+- Post-install flow: added `makemigrations accounts` step before `migrate`
+- Upgrade regression: `.forge.toml` excluded from overwrite confirmation prompt
 
 ## [0.1.0] — 2026-05-11
 
