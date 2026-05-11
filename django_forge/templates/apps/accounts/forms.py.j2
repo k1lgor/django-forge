@@ -6,7 +6,7 @@ from django.contrib.auth.forms import (
     UserCreationForm as BaseUserCreationForm,
 )
 
-from {{ project_slug }}.apps.accounts.models import User
+from apps.accounts.models import User
 
 
 class UserCreationForm(BaseUserCreationForm):

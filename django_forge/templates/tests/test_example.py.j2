@@ -8,4 +8,4 @@ from django.conf import settings
 def test_settings_importable() -> None:
     """Django settings are importable and have the expected configuration."""
     assert settings.DEBUG is True
-    assert "{{ project_slug }}.apps.accounts" in settings.INSTALLED_APPS
+    assert "apps.accounts" in settings.INSTALLED_APPS

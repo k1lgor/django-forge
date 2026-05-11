@@ -73,4 +73,4 @@ Key variables:
 2. Set `DJANGO_SECRET_KEY` to a secure random value
 3. Configure `DATABASE_URL` for PostgreSQL
 4. Run `uv run manage.py collectstatic` for static files
-5. Use `uv run uvicorn --workers 4 {{ project_slug }}.config.asgi:application`
+5. Use `uv run uvicorn --workers 4 config.asgi:application`

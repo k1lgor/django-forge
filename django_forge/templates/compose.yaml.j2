@@ -6,7 +6,7 @@
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE={{ project_slug }}.config.settings.base
+      - DJANGO_SETTINGS_MODULE=config.settings.base
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media

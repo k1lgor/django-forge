@@ -26,7 +26,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 {% elif use_ninja %}
 from ninja import ModelSchema, Router
 
-from {{ project_slug }}.apps.accounts.models import User
+from apps.accounts.models import User
 
 
 class UserSchema(ModelSchema):

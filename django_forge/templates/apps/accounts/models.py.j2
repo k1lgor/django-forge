@@ -3,7 +3,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from {{ project_slug }}.apps.accounts.managers import UserManager
+from apps.accounts.managers import UserManager
 
 
 class User(AbstractUser):

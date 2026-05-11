@@ -1,0 +1,8 @@
+include django_forge/templates/.env.example.j2
+include django_forge/templates/.gitignore.j2
+include django_forge/templates/.forge.toml.j2
+include django_forge/templates/.dockerignore.j2
+include django_forge/templates/.pre-commit-config.yaml.j2
+include django_forge/templates/.github/workflows/ci.yml.j2
+include django_forge/templates/media/.gitkeep.j2
+include django_forge/templates/static/.gitkeep.j2

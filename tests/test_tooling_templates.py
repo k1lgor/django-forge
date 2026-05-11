@@ -159,7 +159,7 @@ def test_conftest_has_pytest_configure() -> None:
         content = (target / "tests" / "conftest.py").read_text()
         assert "pytest_configure" in content
         assert "DJANGO_SETTINGS_MODULE" in content
-        assert "testproj.config.settings.base" in content
+        assert "config.settings.base" in content
 
 
 def test_conftest_pytest_configure_is_valid() -> None:
@@ -231,9 +231,9 @@ def test_pytest_config_has_correct_settings_module() -> None:
         renderer.render_project(ctx, target)
         # Check pyproject.toml
         toml_content = (target / "pyproject.toml").read_text()
-        assert "my_custom_app.config.settings.base" in toml_content
+        assert "config.settings.base" in toml_content
         # Check conftest.py
         conftest_content = (
             target / "tests" / "conftest.py"
         ).read_text()
-        assert "my_custom_app.config.settings.base" in conftest_content
+        assert "config.settings.base" in conftest_content

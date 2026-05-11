@@ -36,7 +36,7 @@ dev = [
 
 [build-system]
 requires = ["setuptools"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 100
@@ -53,9 +53,12 @@ indent-style = "space"
 [tool.ty.environment]
 python-version = "3.12"
 
+[tool.setuptools.packages.find]
+include = ["apps*", "config*", "tests*"]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
 env = [
-    "DJANGO_SETTINGS_MODULE={{ project_slug }}.config.settings.base",
+    "DJANGO_SETTINGS_MODULE=config.settings.base",
 ]

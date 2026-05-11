@@ -49,6 +49,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pydantic" },
     { name = "rich" },
+    { name = "tomli" },
     { name = "typer" },
 ]
 
@@ -69,6 +70,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0,<7.0" },
     { name = "rich", specifier = ">=13.0,<14.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8,<1.0" },
+    { name = "tomli", specifier = ">=2.0,<3.0" },
     { name = "tomli", marker = "extra == 'dev'", specifier = ">=2.0,<3.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.35,<1.0" },
     { name = "typer", specifier = ">=0.12,<1.0" },
