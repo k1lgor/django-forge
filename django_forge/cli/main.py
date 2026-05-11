@@ -64,3 +64,10 @@ def add(
     from django_forge.cli.add import add_layer
 
     add_layer(layer=layer)
+
+
+@app.command()
+def upgrade() -> None:
+    """Re-apply all templates to an existing project."""
+    from django_forge.cli.upgrade import upgrade_project
+    upgrade_project()
