@@ -31,6 +31,9 @@ $ forge start myproject
 $ forge --help
 $ forge list
 $ forge start myproject --no-input     # for CI
+$ forge add docker                      # add layer to existing project
+$ forge add celery
+$ forge add email
 ```
 
 The wizard asks three questions:
@@ -91,6 +94,20 @@ After answering, `forge` generates all files, runs `uv sync`, migrates the datab
 | **Docker** | Multi-stage `Dockerfile` (uv build), `compose.yaml` with app + db + optional redis/mailpit |
 | **Celery** | `config/celery.py`, `tasks.py`, Redis broker + cache, deps: `celery~=5.4`, `redis>=5.0` |
 | **Email** | Mailpit (dev) / SMTP (prod) config, email env vars in `.env.example` |
+
+## Adding layers later — `forge add`
+
+Already have a project? Run `forge add <layer>` from its root directory.
+Docker, Celery, or Email layers can be added after scaffolding. The command
+detects your project context from `.forge.toml`, confirms before overwriting
+any existing files, and updates the layer tracking.
+
+```bash
+cd myproject
+forge add docker     # adds Dockerfile + compose.yaml + .dockerignore
+forge add celery    # adds worker, tasks, patches settings
+forge add email     # patches settings with email config
+```
 
 ## Automation
 

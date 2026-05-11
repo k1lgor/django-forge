@@ -627,7 +627,7 @@ def test_forge_toml_valid_toml(project_renderer: Renderer, pure_context: dict) -
         assert output.exists()
         data = _toml.loads(output.read_text())
         assert "forge" in data
-        assert data["forge"]["version"] == "0.1.0"
+        assert data["forge"]["version"] == "0.2.0"
         assert data["forge"]["api"] == "pure"
         assert data["forge"]["db"] == "sqlite"
         assert data["forge"]["layers"] == []
