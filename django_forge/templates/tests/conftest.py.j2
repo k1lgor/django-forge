@@ -1,0 +1,11 @@
+"""Pytest configuration for {{ project_name }}."""
+
+import os
+
+
+def pytest_configure() -> None:
+    """Set the Django settings module before any test runs."""
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE",
+        "{{ project_slug }}.config.settings.base",
+    )

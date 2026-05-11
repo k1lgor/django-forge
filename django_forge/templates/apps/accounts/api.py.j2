@@ -1,0 +1,52 @@
+"""API views for the accounts application.
+
+Conditional on whether DRF or Ninja is selected.
+"""
+
+{% if use_drf %}
+from django.contrib.auth import get_user_model
+from rest_framework import serializers, viewsets
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer for the User model."""
+
+    class Meta:
+        model = get_user_model()
+        fields = ("id", "email", "is_active", "date_joined")
+        read_only_fields = ("id", "date_joined")
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """API endpoint for viewing users."""
+
+    queryset = get_user_model().objects.all()
+    serializer_class = UserSerializer
+
+{% elif use_ninja %}
+from ninja import ModelSchema, Router
+
+from {{ project_slug }}.apps.accounts.models import User
+
+
+class UserSchema(ModelSchema):
+    """Schema for the User model."""
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "is_active", "date_joined")
+
+
+router = Router()
+
+
+@router.get("/users", response=list[UserSchema])
+def list_users(request):
+    """List all users."""
+    return User.objects.all()
+
+{% else %}
+# No API framework selected — views.py handles routing instead.
+# If you add DRF or Ninja later, enable it in pyproject.toml
+# and update this file.
+{% endif %}

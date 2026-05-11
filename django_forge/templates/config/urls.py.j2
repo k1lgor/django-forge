@@ -1,0 +1,20 @@
+"""URL configuration for {{ project_name }}."""
+
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("accounts/", include("allauth.urls")),
+{% if use_drf %}
+    path("api/", include("{{ project_slug }}.apps.accounts.urls")),
+{% endif %}
+{% if use_ninja %}
+    path("api/", include("{{ project_slug }}.apps.accounts.urls")),
+{% endif %}
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

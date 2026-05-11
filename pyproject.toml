@@ -1,0 +1,76 @@
+[project]
+name = "django-forge"
+version = "0.1.0"
+description = "Scaffold production-ready Django projects with senior-architect best practices"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["django", "scaffold", "boilerplate", "cli", "uv"]
+authors = [
+    { name = "Plamen Ivanov", email = "paco.iwanow@gmail.com" },
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+]
+
+dependencies = [
+    "typer>=0.12,<1.0",
+    "rich>=13.0,<14.0",
+    "jinja2>=3.1,<4.0",
+    "pydantic>=2.0,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8,<1.0",
+    "ty>=0.0.35,<1.0",
+    "pytest>=8.0,<9.0",
+    "tomli>=2.0,<3.0",
+    "pyyaml>=6.0,<7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/k1lgor/django-forge"
+Source = "https://github.com/k1lgor/django-forge"
+
+[project.scripts]
+forge = "django_forge.cli.main:app"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "ARG", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ty]
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.setuptools.package-data]
+django_forge = ["templates/**/*"]
+
+[tool.setuptools.packages.find]
+include = ["django_forge", "django_forge.*"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]

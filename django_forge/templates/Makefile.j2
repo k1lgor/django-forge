@@ -1,0 +1,22 @@
+.PHONY: lint typecheck test check run migrate makemigrations
+
+lint:
+	uv run ruff check .
+	uv run ruff format --check .
+
+typecheck:
+	uv run ty check
+
+test:
+	uv run pytest
+
+check: lint typecheck test
+
+run:
+	uv run manage.py runserver
+
+migrate:
+	uv run manage.py migrate
+
+makemigrations:
+	uv run manage.py makemigrations

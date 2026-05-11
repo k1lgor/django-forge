@@ -1,0 +1,10 @@
+{% if has_celery %}"""Celery tasks for the accounts app."""
+
+from celery import shared_task
+
+
+@shared_task
+def add(x: int, y: int) -> int:
+    """Sample task — returns the sum of two integers."""
+    return x + y
+{% endif %}

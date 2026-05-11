@@ -1,0 +1,11 @@
+"""Example test that verifies pytest-django is configured correctly."""
+
+import pytest
+from django.conf import settings
+
+
+@pytest.mark.django_db
+def test_settings_importable() -> None:
+    """Django settings are importable and have the expected configuration."""
+    assert settings.DEBUG is True
+    assert "{{ project_slug }}.apps.accounts" in settings.INSTALLED_APPS

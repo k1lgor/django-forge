@@ -1,0 +1,34 @@
+"""Custom User model with email-based authentication."""
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+from {{ project_slug }}.apps.accounts.managers import UserManager
+
+
+class User(AbstractUser):
+    """Custom user model using email as the unique identifier.
+
+    Username is optional — authentication is email-based.
+    """
+
+    username = models.CharField(
+        "username",
+        max_length=150,
+        blank=True,
+        null=True,
+        help_text="Optional. Not used for authentication.",
+    )
+    email = models.EmailField(
+        "email address",
+        unique=True,
+        help_text="Required. Used for authentication.",
+    )
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    objects = UserManager()
+
+    def __str__(self) -> str:
+        return self.email

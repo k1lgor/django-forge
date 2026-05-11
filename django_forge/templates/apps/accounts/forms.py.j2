@@ -1,0 +1,25 @@
+"""Custom forms for the User model."""
+
+from django import forms
+from django.contrib.auth.forms import (
+    UserChangeForm as BaseUserChangeForm,
+    UserCreationForm as BaseUserCreationForm,
+)
+
+from {{ project_slug }}.apps.accounts.models import User
+
+
+class UserCreationForm(BaseUserCreationForm):
+    """Form for creating new users."""
+
+    class Meta(BaseUserCreationForm.Meta):
+        model = User
+        fields = ("email",)
+
+
+class UserChangeForm(BaseUserChangeForm):
+    """Form for updating users."""
+
+    class Meta(BaseUserChangeForm.Meta):
+        model = User
+        fields = "__all__"

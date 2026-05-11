@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "{%" }} block title {{ "%}" }}{{ project_name }}{{ "{%" }} endblock title {{ "%}" }}</title>
+    {{ "{%" }} block extra_head {{ "%}" }}{{ "{%" }} endblock extra_head {{ "%}" }}
+</head>
+<body>
+    <header>
+        <h1><a href="/">{{ project_name }}</a></h1>
+    </header>
+
+    <main>
+        {{ "{%" }} block content {{ "%}" }}
+        <p>Welcome to {{ project_name }}.</p>
+        {{ "{%" }} endblock content {{ "%}" }}
+    </main>
+
+    <footer>
+        <p>&copy; 2026 {{ project_name }}</p>
+    </footer>
+</body>
+</html>

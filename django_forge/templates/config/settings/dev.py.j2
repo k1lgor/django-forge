@@ -1,0 +1,18 @@
+"""Development settings for {{ project_name }}."""
+
+from {{ project_slug }}.config.settings.base import *  # noqa: F403, F401
+
+# Debug enabled for development
+DEBUG = True
+
+# SQLite for fast local development
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "local.sqlite3",
+    }
+}
+
+{% if has_email %}# Console email backend for development
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+{% endif %}

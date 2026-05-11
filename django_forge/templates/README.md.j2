@@ -1,0 +1,76 @@
+# {{ project_name }}
+
+> Scaffolded by [django-forge](https://github.com/plamen/django-forge)
+
+{{ project_name }} is a Django project with modern best practices out of the box.
+
+## Quick start
+
+```bash
+# Install dependencies
+uv sync
+
+# Activate the virtual environment
+. .venv/bin/activate  # macOS / Linux
+.venv\Scripts\activate  # Windows
+
+# Set up the database
+uv run manage.py migrate
+
+# Create a superuser
+uv run manage.py createsuperuser
+
+# Start the development server
+uv run manage.py runserver
+```
+
+## Available commands
+
+| Command | Description |
+|---|---|
+| `make lint` | Run ruff linter and formatter |
+| `make typecheck` | Run ty type checker |
+| `make test` | Run pytest with Django |
+| `make check` | Run lint, typecheck, and test |
+| `make run` | Start the Django dev server |
+| `make migrate` | Apply database migrations |
+| `make makemigrations` | Create new database migrations |
+
+## Tech stack
+
+- **Framework:** Django 5.1+
+- **Python:** 3.12+
+- **Package manager:** uv
+- **Linting:** ruff (linter + formatter)
+- **Type checking:** ty (Astral)
+- **Testing:** pytest, pytest-django, factory-boy
+- **Auth:** django-allauth (email-based authentication)
+- **Static files:** WhiteNoise
+- **Database:** SQLite (development) / PostgreSQL (production)
+- **ASGI server:** uvicorn
+
+## Environment variables
+
+Copy `.env.example` to `.env` and edit:
+
+```bash
+cp .env.example .env
+```
+
+Key variables:
+
+| Variable | Description |
+|---|---|
+| `DJANGO_SECRET_KEY` | Secret key for cryptographic signing |
+| `DJANGO_DEBUG` | Set to `false` in production |
+| `DATABASE_URL` | Database URL (SQLite default, PostgreSQL in production) |
+| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins (comma-separated) |
+| `SENTRY_DSN` | Sentry DSN (optional — leave empty to disable) |
+
+## Deployment
+
+1. Set `DJANGO_DEBUG=false` in production
+2. Set `DJANGO_SECRET_KEY` to a secure random value
+3. Configure `DATABASE_URL` for PostgreSQL
+4. Run `uv run manage.py collectstatic` for static files
+5. Use `uv run uvicorn --workers 4 {{ project_slug }}.config.asgi:application`

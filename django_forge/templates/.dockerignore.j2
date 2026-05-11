@@ -1,0 +1,40 @@
+{% if has_docker %}# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.egg
+
+# Django
+*.sqlite3
+/media/
+/staticfiles/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Version control
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage/
+
+# Docker
+.dockerignore
+Dockerfile
+compose.yaml
+{% endif %}

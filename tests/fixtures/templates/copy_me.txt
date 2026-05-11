@@ -1,0 +1,1 @@
+This file has no .j2 extension and should be copied verbatim.

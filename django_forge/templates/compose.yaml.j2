@@ -1,0 +1,88 @@
+{% if has_docker %}services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE={{ project_slug }}.config.settings.base
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+{% if has_celery %}
+      redis:
+        condition: service_started
+{% endif %}
+
+  db:
+{% if db == "postgres" %}
+    image: postgres:17-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: {{ project_slug }}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+{% else %}
+    image: nouchka/sqlite3:latest
+    restart: unless-stopped
+    volumes:
+      - sqlite_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "sqlite3 /data/db.sqlite3 'SELECT 1;'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% endif %}
+
+{% if has_celery %}
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+{% endif %}
+
+{% if has_email %}
+  mailpit:
+    image: axllent/mailpit:v1
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH: "false"
+      MP_SMTP_TLS: "false"
+{% endif %}
+
+volumes:
+  static_volume:
+  media_volume:
+{% if db == "postgres" %}
+  postgres_data:
+{% else %}
+  sqlite_data:
+{% endif %}
+{% if has_celery %}
+  redis_data:
+{% endif %}
+{% endif %}
