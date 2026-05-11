@@ -1,7 +1,7 @@
 """Post-generation shell command runner.
 
-Runs ``uv sync``, ``uv run manage.py migrate``, and
-``uv run manage.py check --deploy`` in the scaffolded project directory.
+Runs ``uv sync``, ``makemigrations``, ``migrate``, and
+``check --deploy`` in the scaffolded project directory.
 """
 
 import shutil
@@ -15,9 +15,10 @@ def run_post_install(project_dir: Path) -> bool:
     """Run post-generation steps in *project_dir*.
 
     Steps:
-    1. ``uv sync`` - install dependencies
-    2. ``uv run manage.py migrate`` - apply initial migrations
-    3. ``uv run manage.py check --deploy`` - verify deployment readiness
+    1. ``uv sync`` — install dependencies
+    2. ``uv run manage.py makemigrations`` — create initial migrations
+    3. ``uv run manage.py migrate`` — apply initial migrations
+    4. ``uv run manage.py check --deploy`` — verify deployment readiness
 
     Each step is skipped if the previous step failed.
 
@@ -35,7 +36,12 @@ def run_post_install(project_dir: Path) -> bool:
     if not _run_uv_sync(project_dir):
         return False
 
-    _run_migrate(project_dir)
+    if not _run_makemigrations(project_dir):
+        return False
+
+    if not _run_migrate(project_dir):
+        return False
+
     _run_check_deploy(project_dir)
     return True
 
@@ -120,6 +126,36 @@ def _run_uv_sync(project_dir: Path) -> bool:
     return True
 
 
+def _run_makemigrations(project_dir: Path) -> bool:
+    """Create initial migrations for the custom User model.
+
+    Runs ``uv run manage.py makemigrations accounts``
+    — explicit app label ensures migrations are created
+    even when no migrations directory exists yet.
+    """
+    returncode, _stdout, stderr = _run_cmd(
+        ["uv", "run", "manage.py", "makemigrations", "accounts"],
+        cwd=project_dir,
+    )
+
+    if returncode != 0:
+        console.print(" [forge.error]X[/]")
+        console.print(
+            "[forge.error]X Migration creation failed.[/]"
+        )
+        console.print(
+            f"  [forge.muted]Error: {_truncate(stderr, 300)}[/]"
+        )
+        console.print()
+        console.print(
+            "  [forge.info]Try running:[/]"
+            f" [forge.highlight]cd {project_dir.name}"
+            " && uv run manage.py makemigrations[/]"
+        )
+        return False
+    return True
+
+
 def _run_migrate(project_dir: Path) -> bool:
     """Run ``uv run manage.py migrate`` in *project_dir*.
 
@@ -159,7 +195,7 @@ def _run_migrate(project_dir: Path) -> bool:
 def _run_check_deploy(project_dir: Path) -> bool:
     """Run ``uv run manage.py check --deploy``.
 
-    Warnings are non-blocking - we print them but don't fail.
+    Warnings are non-blocking — we print them but don't fail.
     """
     console.print(
         "  [forge.label]Deployment check...[/]", end=""
