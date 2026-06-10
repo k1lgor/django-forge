@@ -72,11 +72,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     # Third-party
-{% if use_drf %}
+{%- if use_drf %}
     "rest_framework",
-{% endif %}
-{% if use_ninja %}
-{% endif %}
+{%- endif %}
+{%- if use_ninja -%}
+{%- endif %}
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
