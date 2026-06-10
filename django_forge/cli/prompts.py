@@ -7,6 +7,7 @@ then a summary confirmation.
 from rich.prompt import Confirm, Prompt
 
 from django_forge.cli.console import console
+from django_forge.cli.prefs import load_prefs
 
 _FRAMEWORKS = {
     "1": ("DRF", "Django REST Framework - battle-tested, large ecosystem"),
@@ -51,8 +52,8 @@ _BASE_CONTEXT = {
 
 def confirm_scaffold(
     project_name: str,
-    api: str = "pure",
-    db: str = "sqlite",
+    api: str | None = None,
+    db: str | None = None,
     layers: list[str] | None = None,
     no_input: bool = False,
 ) -> dict | None:
@@ -60,20 +61,30 @@ def confirm_scaffold(
 
     Args:
         project_name: Name of the project to create.
-        api: Default API framework choice.
-        db: Default database choice.
-        layers: Default optional layers list.
+        api: Default API framework choice (``None`` → use cached or hardcoded default).
+        db: Default database choice (``None`` → use cached or hardcoded default).
+        layers: Default optional layers list (``None`` → use cached or hardcoded default).
         no_input: If ``True``, skip all prompts and return defaults.
 
     Returns:
         The context dict for the renderer, or ``None`` if the user declined.
     """
+    cached = load_prefs()
+
+    if api is None:
+        api = cached["api"]
+    if db is None:
+        db = cached["db"]
     if layers is None:
-        layers = []
+        layers = cached["layers"]
+
+    assert api is not None
+    assert db is not None
+    assert layers is not None
 
     if no_input:
         return _build_context(
-            project_name, api="drf", db="postgres", layers=[],
+            project_name, api=api, db=db, layers=list(layers),
         )
 
     # Question 1: API Framework
