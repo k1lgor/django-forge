@@ -45,7 +45,7 @@ def list_users(request):
     """List all users."""
     return User.objects.all()
 
-{% else %}
+{%- else %}
 # No API framework selected — views.py handles routing instead.
 # If you add DRF or Ninja later, enable it in pyproject.toml
 # and update this file.

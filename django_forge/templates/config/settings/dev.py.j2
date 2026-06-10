@@ -13,7 +13,7 @@ DATABASES = {
     }
 }
 
-{% if has_email %}# Console email backend for development
+{%- if has_email %}# Console email backend for development
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 {% endif %}
 

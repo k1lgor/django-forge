@@ -8,7 +8,7 @@ DEBUG = False
 # Allow all hosts behind a proxy
 ALLOWED_HOSTS = ["*"]
 
-{% if has_email %}# SMTP email backend for production
+{%- if has_email %}# SMTP email backend for production
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_SSL = True
 EMAIL_PORT = 465

@@ -14,11 +14,11 @@ class Settings(BaseSettings):
     allowed_hosts: list[str] = ["localhost", "127.0.0.1", "0.0.0.0"]
 
     # Database
-{% if db == "postgres" %}
+{%- if db == "postgres" -%}
     database_url: str = "sqlite:///local.sqlite3"
 {% else %}
     database_url: str = "sqlite:///local.sqlite3"
-{% endif %}
+{%- endif -%}
 
 {% if has_celery %}    # Celery
     celery_broker_url: str = "redis://localhost:6379/0"
@@ -128,7 +128,7 @@ ASGI_APPLICATION = "config.asgi.application"
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-{% if db == "postgres" %}
+{%- if db == "postgres" %}
 import re
 
 _db_match = re.match(
@@ -153,14 +153,14 @@ else:
             "NAME": BASE_DIR / "local.sqlite3",
         }
     }
-{% else %}
+{%- else %}
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "local.sqlite3",
     }
 }
-{% endif %}
+{%- endif %}
 
 # ---------------------------------------------------------------------------
 # Authentication
@@ -173,7 +173,7 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-{% if has_social %}
+{%- if has_social %}
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APP": {
@@ -207,7 +207,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-ST{% if has_storage %}ORAGES = {
+ST{%- if has_storage %}ORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
@@ -225,7 +225,7 @@ AWS_S3_REGION_NAME = settings.aws_s3_region_name
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-{% endif %}
+{%- endif %}
 
 # ---------------------------------------------------------------------------
 # Media files
@@ -235,7 +235,7 @@ MEDIA_URL = f"https://{settings.aws_s3_endpoint_url}/{settings.aws_storage_bucke
 {% else %}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
-{% endif %}
+{%- endif %}
 
 # ---------------------------------------------------------------------------
 # CORS

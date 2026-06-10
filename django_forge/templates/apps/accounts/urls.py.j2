@@ -25,7 +25,7 @@ urlpatterns = router.urls
 # Ninja API routing — router defined in the main api.py
 urlpatterns = []
 
-{% else %}
+{%- else %}
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 
