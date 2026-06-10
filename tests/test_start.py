@@ -257,3 +257,84 @@ def test_output_uses_rich_styling(
         app, ["start", "styled"], input=_DEFAULT_INPUT
     )
     assert "FORGE" in result.stdout.upper()
+
+
+# ---------------------------------------------------------------------------
+# Createsuperuser prompt
+# ---------------------------------------------------------------------------
+
+
+@patch(_PATCH_PATH, return_value=True)
+@patch("django_forge.cli.start._prompt_createsuperuser")
+def test_createsuperuser_called_after_successful_scaffold(
+    mock_prompt, _mock_install, tmp_path: Path
+) -> None:
+    """After successful scaffold, _prompt_createsuperuser is invoked."""
+    os.chdir(tmp_path)
+    runner.invoke(app, ["start", "myproject"], input=_DEFAULT_INPUT)
+    mock_prompt.assert_called_once()
+
+
+@patch(_PATCH_PATH, return_value=True)
+@patch("django_forge.cli.start._prompt_createsuperuser")
+def test_createsuperuser_not_called_on_post_install_failure(
+    mock_prompt, _mock_install, tmp_path: Path
+) -> None:
+    """When post-install fails, the createsuperuser prompt is skipped."""
+    _mock_install.return_value = False
+    os.chdir(tmp_path)
+    runner.invoke(app, ["start", "myproject"], input=_DEFAULT_INPUT)
+    mock_prompt.assert_not_called()
+
+
+@patch(_PATCH_PATH, return_value=True)
+@patch("django_forge.cli.start._prompt_createsuperuser")
+def test_createsuperuser_not_called_in_no_input_mode(
+    mock_prompt, _mock_install, tmp_path: Path
+) -> None:
+    """--no-input skips the createsuperuser prompt entirely."""
+    os.chdir(tmp_path)
+    runner.invoke(app, ["start", "myproject", "--no-input"])
+    mock_prompt.assert_not_called()
+
+
+@patch("subprocess.run")
+@patch("sys.stdin.isatty", return_value=True)
+def test_createsuperuser_accept_runs_command(
+    mock_tty, mock_run, tmp_path: Path
+) -> None:
+    """Accepting the prompt runs uv run manage.py createsuperuser."""
+    from django_forge.cli.start import _prompt_createsuperuser
+    project = tmp_path / "myproject"
+    project.mkdir()
+    with patch("builtins.input", return_value="y"):
+        _prompt_createsuperuser(project)
+    mock_run.assert_called_once()
+    args = mock_run.call_args[0][0]
+    assert args[0] == "uv"
+    assert "createsuperuser" in args
+
+
+@patch("sys.stdin.isatty", return_value=True)
+def test_createsuperuser_decline_shows_skip_message(
+    mock_tty, tmp_path: Path
+) -> None:
+    """Declining shows skip message with manual instructions."""
+    from django_forge.cli.start import _prompt_createsuperuser
+    project = tmp_path / "myproject"
+    project.mkdir()
+    with patch("builtins.input", return_value="n"):
+        _prompt_createsuperuser(project)
+
+
+@patch("sys.stdin.isatty", return_value=False)
+def test_createsuperuser_skips_in_non_tty(
+    mock_tty, tmp_path: Path
+) -> None:
+    """Non-TTY environments (CI, piped input) skip the prompt."""
+    from django_forge.cli.start import _prompt_createsuperuser
+    project = tmp_path / "myproject"
+    project.mkdir()
+    with patch("subprocess.run") as mock_run:
+        _prompt_createsuperuser(project)
+    mock_run.assert_not_called()

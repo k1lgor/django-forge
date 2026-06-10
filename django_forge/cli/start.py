@@ -5,10 +5,13 @@ prompt -> render -> install -> success.
 """
 
 import secrets
+import subprocess
+import sys
 from pathlib import Path
 
 from django_forge.cli.console import console
 from django_forge.cli.installer import run_post_install
+from django_forge.cli.prefs import save_prefs
 from django_forge.cli.prompts import confirm_scaffold
 from django_forge.renderer import Renderer
 
@@ -46,10 +49,14 @@ def start_project(
 
     # 3. Confirm scaffold settings
     secret_key = _generate_secret_key()
-    context = confirm_scaffold(project_name, no_input=no_input)
+    context = confirm_scaffold(
+        project_name, api=None, db=None, layers=None, no_input=no_input,
+    )
     if context is None:
         return
     context["secret_key"] = secret_key
+
+    save_prefs(api=context["api"], db=context["db"], layers=context["layers"])
 
     # 4. Generate template files
     renderer = _get_renderer()
@@ -62,7 +69,11 @@ def start_project(
     # 5. Post-install steps
     success = run_post_install(target_dir)
 
-    # 6. Success banner
+    # 6. Offer to create a superuser (skip in CI / --no-input)
+    if success and not no_input:
+        _prompt_createsuperuser(target_dir)
+
+    # 7. Success banner
     if success:
         _print_success(project_name)
 
@@ -172,3 +183,50 @@ def _is_ci_env() -> bool:
         os.environ.get("CI", "").lower() == "true"
         or os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
     )
+
+
+def _prompt_createsuperuser(project_dir: Path) -> None:
+    """Offer to create a Django superuser account interactively.
+
+    Skips if stdin is not a TTY (piped input, CI, tests) or the
+    user declines. The ``createsuperuser`` command runs in the
+    foreground so the user can type their email and password directly.
+    """
+    if not sys.stdin.isatty():
+        console.print()
+        console.print(
+            "  [forge.muted]"
+            "Non-interactive environment — skipping createsuperuser."
+            "[/]"
+        )
+        console.print()
+        return
+
+    console.print()
+    response = input("  Create a superuser account? [y/N] ").strip().lower()
+    if response not in ("y", "yes"):
+        console.print("  [forge.muted]Skipped. You can create one later with:[/]")
+        console.print(
+            f"    [forge.highlight]cd {project_dir.name}"
+            " && uv run manage.py createsuperuser[/]"
+        )
+        console.print()
+        return
+
+    console.print()
+    console.print(
+        "  [forge.label]Running [forge.highlight]"
+        "createsuperuser[/]..."
+    )
+    console.print()
+    try:
+        subprocess.run(
+            ["uv", "run", "manage.py", "createsuperuser"],
+            cwd=str(project_dir),
+            check=False,
+        )
+    except FileNotFoundError:
+        console.print(
+            "  [forge.error]uv not found — cannot run createsuperuser.[/]"
+        )
+    console.print()
