@@ -5,29 +5,29 @@ description = "{{ project_name }} — scaffolded by django-forge"
 requires-python = ">=3.12"
 dependencies = [
     "django~=5.1.0",
-{% if use_drf %}
+{%- if use_drf %}
     "djangorestframework~=3.15.0",
     "djangorestframework-simplejwt~=5.5.0",
-{% endif %}
-{% if use_ninja %}
+{%- endif %}
+{%- if use_ninja %}
     "django-ninja~=1.4.0",
     "django-ninja-jwt~=5.0.0",
-{% endif %}
+{%- endif %}
     "uvicorn[standard]~=0.34.0",
     "whitenoise~=6.9.0",
     "django-cors-headers~=4.7.0",
     "pydantic-settings~=2.8.0",
     "django-allauth~=65.6.0",
-{% if has_celery %}
+{%- if has_celery %}
     "celery~=5.4.0",
     "redis>=5.0,<6.0",
-{% endif %}
-{% if has_cache and not has_celery %}
+{%- endif %}
+{%- if has_cache and not has_celery %}
     "redis>=5.0,<6.0",
-{% endif %}
-{% if has_storage %}
+{%- endif %}
+{%- if has_storage %}
     "django-storages[s3]>=1.14,<2.0",
-{% endif %}
+{%- endif %}
 ]
 
 [project.optional-dependencies]

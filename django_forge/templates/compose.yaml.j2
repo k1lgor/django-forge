@@ -13,13 +13,13 @@
     depends_on:
       db:
         condition: service_healthy
-{% if has_celery or has_cache %}
+{%- if has_celery or has_cache %}
       redis:
         condition: service_started
-{% endif %}
+{%- endif %}
 
   db:
-{% if db == "postgres" %}
+{%- if db == "postgres" %}
     image: postgres:17-alpine
     restart: unless-stopped
     volumes:
@@ -35,7 +35,7 @@
       retries: 5
     ports:
       - "5432:5432"
-{% else %}
+{%- else %}
     image: nouchka/sqlite3:latest
     restart: unless-stopped
     volumes:
@@ -45,9 +45,9 @@
       interval: 5s
       timeout: 5s
       retries: 5
-{% endif %}
+{%- endif %}
 
-{% if has_celery or has_cache %}
+{%- if has_celery or has_cache %}
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -60,9 +60,9 @@
       retries: 5
     volumes:
       - redis_data:/data
-{% endif %}
+{%- endif %}
 
-{% if has_email %}
+{%- if has_email %}
   mailpit:
     image: axllent/mailpit:v1
     restart: unless-stopped
@@ -72,17 +72,17 @@
     environment:
       MP_SMTP_AUTH: "false"
       MP_SMTP_TLS: "false"
-{% endif %}
+{%- endif %}
 
 volumes:
   static_volume:
   media_volume:
-{% if db == "postgres" %}
+{%- if db == "postgres" %}
   postgres_data:
-{% else %}
+{%- else %}
   sqlite_data:
-{% endif %}
-{% if has_celery or has_cache %}
+{%- endif %}
+{%- if has_celery or has_cache %}
   redis_data:
-{% endif %}
+{%- endif %}
 {% endif %}
