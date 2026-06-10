@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from django_forge import __version__ as _forge_version
 from django_forge.renderer import Renderer
 
 FIXTURE_TEMPLATES = Path(__file__).resolve().parent / "fixtures" / "templates"
@@ -27,6 +28,10 @@ MINIMAL_CONTEXT = {
     "has_docker": False,
     "has_celery": False,
     "has_email": False,
+    "has_cache": False,
+    "has_social": False,
+    "has_storage": False,
+    "forge_version": _forge_version,
 }
 
 
@@ -627,7 +632,7 @@ def test_forge_toml_valid_toml(project_renderer: Renderer, pure_context: dict) -
         assert output.exists()
         data = _toml.loads(output.read_text())
         assert "forge" in data
-        assert data["forge"]["version"] == "0.2.0"
+        assert data["forge"]["version"] == _forge_version
         assert data["forge"]["api"] == "pure"
         assert data["forge"]["db"] == "sqlite"
         assert data["forge"]["layers"] == []

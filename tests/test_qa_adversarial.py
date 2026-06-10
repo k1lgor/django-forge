@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from django_forge import __version__ as _forge_version
 from django_forge.cli.main import app
 
 runner = CliRunner()
@@ -21,7 +22,7 @@ def _make_forge_toml(path: Path, layers: list[str]) -> None:
     layers_str = ", ".join(f'"{layer}"' for layer in layers)
     toml = (
         f'[forge]\n'
-        f'version = "0.2.0"\n'
+        f'version = "{_forge_version}"\n'
         f'api = "pure"\n'
         f'db = "sqlite"\n'
         f'layers = [{layers_str}]\n'

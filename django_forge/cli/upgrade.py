@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from django_forge import __version__ as _forge_version
 from django_forge.cli.add import (
     _confirm_existing_files,
     _update_forge_toml,
@@ -55,6 +56,7 @@ def upgrade_project() -> None:
         "has_cache": "cache" in existing_layers,
         "has_social": "social" in existing_layers,
         "has_storage": "storage" in existing_layers,
+        "forge_version": _forge_version,
     }
 
     # Collect files that will be overwritten

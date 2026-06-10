@@ -6,6 +6,7 @@ then a summary confirmation.
 
 from rich.prompt import Confirm, Prompt
 
+from django_forge import __version__ as _forge_version
 from django_forge.cli.console import console
 from django_forge.cli.prefs import load_prefs
 
@@ -163,6 +164,7 @@ def _build_context(
     context["has_cache"] = "cache" in layers
     context["has_social"] = "social" in layers
     context["has_storage"] = "storage" in layers
+    context["forge_version"] = _forge_version
     return context
 
 

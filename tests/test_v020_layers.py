@@ -215,7 +215,149 @@ def test_all_six_layers_together(
 
 
 # ---------------------------------------------------------------------------
-# forge add for new layers
+# forge add for new layers — successful additions
+# ---------------------------------------------------------------------------
+
+
+def _start_and_cd(tmp_path: Path) -> Path:
+    """Scaffold a project and chdir into it."""
+    os.chdir(tmp_path)
+    runner.invoke(app, ["start", "t"], input="\n\n0\nY\n")
+    project = tmp_path / "t"
+    os.chdir(project)
+    return project
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_cache_adds_caches_to_base(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add cache adds CACHES config to base.py."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "cache"], input="Y\n")
+    base = (project / "config" / "settings" / "base.py").read_text()
+    assert "CACHES" in base
+    assert "RedisCache" in base
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_cache_adds_redis_dep(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add cache adds redis dependency."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "cache"], input="Y\n")
+    toml = (project / "pyproject.toml").read_text()
+    assert "redis>=" in toml
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_cache_updates_forge_toml(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add cache adds 'cache' to .forge.toml layers."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "cache"], input="Y\n")
+    import tomli
+    data = tomli.loads((project / ".forge.toml").read_text())
+    assert "cache" in data["forge"]["layers"]
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_social_adds_providers(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add social adds SOCIALACCOUNT_PROVIDERS to base.py."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "social"], input="Y\n")
+    base = (project / "config" / "settings" / "base.py").read_text()
+    assert "SOCIALACCOUNT_PROVIDERS" in base
+    assert '"google"' in base
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_social_adds_env_vars(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add social adds provider env vars to .env.example."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "social"], input="Y\n")
+    env = (project / ".env.example").read_text()
+    assert "GOOGLE_CLIENT_ID" in env
+    assert "GITHUB_CLIENT_SECRET" in env
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_storage_adds_s3_backend(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add storage adds S3 storage backend to base.py."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "storage"], input="Y\n")
+    base = (project / "config" / "settings" / "base.py").read_text()
+    assert "storages.backends.s3.S3Storage" in base
+    assert "AWS_ACCESS_KEY_ID" in base
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_storage_adds_dep(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add storage adds django-storages[s3] dependency."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "storage"], input="Y\n")
+    toml = (project / "pyproject.toml").read_text()
+    assert "django-storages" in toml
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_storage_adds_env_vars(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add storage adds S3 env vars to .env.example."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "storage"], input="Y\n")
+    env = (project / ".env.example").read_text()
+    assert "AWS_STORAGE_BUCKET_NAME" in env
+
+
+# ---------------------------------------------------------------------------
+# Integration — multiple forge add calls
+# ---------------------------------------------------------------------------
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_multiple_layers_sequentially(
+    _mock_install, tmp_path: Path
+) -> None:
+    """Multiple forge add calls accumulate layers in .forge.toml."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "cache"], input="Y\n")
+    runner.invoke(app, ["add", "social"], input="Y\n")
+    runner.invoke(app, ["add", "storage"], input="Y\n")
+    import tomli
+    data = tomli.loads((project / ".forge.toml").read_text())
+    layers = data["forge"]["layers"]
+    assert "cache" in layers
+    assert "social" in layers
+    assert "storage" in layers
+
+
+@patch(_PATCH_PATH, return_value=True)
+def test_add_then_start_preserves_context(
+    _mock_install, tmp_path: Path
+) -> None:
+    """forge add cache, then forge add social — both present in context."""
+    project = _start_and_cd(tmp_path)
+    runner.invoke(app, ["add", "cache"], input="Y\n")
+    runner.invoke(app, ["add", "social"], input="Y\n")
+    base = (project / "config" / "settings" / "base.py").read_text()
+    assert "CACHES" in base
+    assert "SOCIALACCOUNT_PROVIDERS" in base
+
+
+# ---------------------------------------------------------------------------
+# Error and edge cases (kept from original)
 # ---------------------------------------------------------------------------
 
 
@@ -234,7 +376,7 @@ def test_add_cache_declined_no_files_changed(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_cache_unknown_layer_error(
+def test_add_unknown_layer_error(
     _mock_install, tmp_path: Path
 ) -> None:
     """Unknown layer shows error for forge add."""
@@ -246,10 +388,10 @@ def test_add_cache_unknown_layer_error(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_social_on_non_forge_project(
+def test_add_on_non_forge_project(
     _mock_install, tmp_path: Path
 ) -> None:
-    """forge add social on non-forge project shows error."""
+    """forge add on non-forge project shows error."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "social"])
     assert (

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from rich.prompt import Confirm
 
+from django_forge import __version__ as _forge_version
 from django_forge.cli.console import console
 from django_forge.renderer import Renderer
 
@@ -170,6 +171,7 @@ def _build_add_context(project_context: dict, new_layer: str) -> dict:
         "has_cache": "cache" in all_layers,
         "has_social": "social" in all_layers,
         "has_storage": "storage" in all_layers,
+        "forge_version": _forge_version,
     }
 
 
@@ -316,7 +318,12 @@ def _add_social(
     renderer: Renderer,
     existing_layers: list[str],
 ) -> bool:
-    """Add Social Auth layer to an existing project."""
+    """Add Social Auth layer to an existing project.
+
+    Note: ``urls.py`` is not re-rendered because social auth URLs
+    are already handled by the existing ``path('accounts/', include('allauth.urls'))``
+    route — no additional URL patterns are needed.
+    """
     console.print()
     console.print(
         "  [forge.label]Adding [forge.highlight]Social Auth[/] layer...[/]"
