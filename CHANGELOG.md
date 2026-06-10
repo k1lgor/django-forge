@@ -5,6 +5,28 @@ All notable changes to django-forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-06-10
+
+### Added
+
+- **User preference cache** — Scaffold choices (api, db, layers) are saved to
+  `~/.config/forge/prefs.json` and reloaded as defaults on the next `forge start`.
+  All platforms use the same path. Overridable via `FORGE_PREFS_DIR` env var.
+- **`createsuperuser` post-scaffold prompt** — After `uv sync` + `migrate` succeed,
+  offers to create a Django superuser account interactively. Skips automatically
+  in non-TTY environments (CI, piped input, `--no-input`).
+- **Caching (Redis) optional layer** — New layer adds Redis cache backend
+  (`django.core.cache.backends.redis.RedisCache`). Available via `forge start`
+  (option 4) and `forge add cache`. Adds Redis service to Docker Compose
+  when Docker is also selected.
+- **Social Auth optional layer** — New layer pre-configures Google and GitHub
+  OAuth via django-allauth. Adds `SOCIALACCOUNT_PROVIDERS` settings and provider
+  environment variables. Available via `forge start` (option 5) and
+  `forge add social`.
+- **S3 Storage optional layer** — New layer adds `django-storages[s3]` for
+  S3/MinIO static and media file storage. Available via `forge start` (option 6)
+  and `forge add storage`.
+
 ## [0.2.0] — 2026-05-11
 
 ### Added

@@ -69,6 +69,9 @@ def _print_optional_layers() -> None:
         ("Docker", "Multi-stage Dockerfile + Docker Compose (PostgreSQL, app)"),
         ("Celery", "Background task queue (requires Redis)"),
         ("Email", "Mailpit (dev) / SMTP (prod) configuration"),
+        ("Caching", "Redis cache backend (django.core.cache.backends.redis)"),
+        ("Social Auth", "Google + GitHub OAuth via django-allauth"),
+        ("S3 Storage", "django-storages[s3] — static + media files on S3/MinIO"),
     ]
 
     for name, desc in layers:

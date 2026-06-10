@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from django_forge import __version__
 from django_forge.cli.console import console
 from django_forge.cli.installer import run_post_install
 from django_forge.cli.prefs import save_prefs
@@ -86,7 +87,7 @@ def _print_banner(
     """Print the forge brand banner."""
     console.print()
     banner = "[forge.brand]"
-    banner += "=== FORGE v0.1.0 - django project scaffolder ==="
+    banner += f"=== FORGE v{__version__} - django project scaffolder ==="
     banner += "[/]"
     console.print(banner)
     console.print()

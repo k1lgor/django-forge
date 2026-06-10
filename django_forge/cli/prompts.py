@@ -26,12 +26,18 @@ _LAYERS = {
     "1": ("Docker", "Multi-stage build + Compose"),
     "2": ("Celery", "Background task queue (Redis required)"),
     "3": ("Email", "Mailpit (dev) / SMTP (prod)"),
+    "4": ("Caching", "Redis cache backend"),
+    "5": ("Social Auth", "Google + GitHub OAuth via allauth"),
+    "6": ("S3 Storage", "S3/MinIO static + media file storage"),
 }
 
 _LAYER_KEY_MAP = {
     "1": "docker",
     "2": "celery",
     "3": "email",
+    "4": "cache",
+    "5": "social",
+    "6": "storage",
 }
 
 _BASE_CONTEXT = {
@@ -47,6 +53,9 @@ _BASE_CONTEXT = {
     "has_docker": False,
     "has_celery": False,
     "has_email": False,
+    "has_cache": False,
+    "has_social": False,
+    "has_storage": False,
 }
 
 
@@ -151,6 +160,9 @@ def _build_context(
     context["has_docker"] = "docker" in layers
     context["has_celery"] = "celery" in layers
     context["has_email"] = "email" in layers
+    context["has_cache"] = "cache" in layers
+    context["has_social"] = "social" in layers
+    context["has_storage"] = "storage" in layers
     return context
 
 
@@ -257,5 +269,8 @@ def _layer_labels(layers: list[str]) -> str:
         "docker": "Docker",
         "celery": "Celery",
         "email": "Email",
+        "cache": "Caching",
+        "social": "Social Auth",
+        "storage": "S3 Storage",
     }
     return ", ".join(label_map.get(layer, layer) for layer in layers)

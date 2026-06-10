@@ -13,7 +13,7 @@
     depends_on:
       db:
         condition: service_healthy
-{% if has_celery %}
+{% if has_celery or has_cache %}
       redis:
         condition: service_started
 {% endif %}
@@ -47,7 +47,7 @@
       retries: 5
 {% endif %}
 
-{% if has_celery %}
+{% if has_celery or has_cache %}
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -82,7 +82,7 @@ volumes:
 {% else %}
   sqlite_data:
 {% endif %}
-{% if has_celery %}
+{% if has_celery or has_cache %}
   redis_data:
 {% endif %}
 {% endif %}

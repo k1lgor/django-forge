@@ -91,7 +91,7 @@ def load_prefs() -> dict[str, Any]:
     if isinstance(data.get("db"), str) and data["db"] in ("postgres", "sqlite"):
         result["db"] = data["db"]
     if isinstance(data.get("layers"), list):
-        valid = [l for l in data["layers"] if isinstance(l, str) and l in ("docker", "celery", "email")]
+        valid = [l for l in data["layers"] if isinstance(l, str) and l in ("docker", "celery", "email", "cache", "social", "storage")]
         result["layers"] = valid
 
     return result

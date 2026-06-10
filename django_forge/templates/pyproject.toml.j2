@@ -22,6 +22,12 @@ dependencies = [
     "celery~=5.4.0",
     "redis>=5.0,<6.0",
 {% endif %}
+{% if has_cache and not has_celery %}
+    "redis>=5.0,<6.0",
+{% endif %}
+{% if has_storage %}
+    "django-storages[s3]>=1.14,<2.0",
+{% endif %}
 ]
 
 [project.optional-dependencies]

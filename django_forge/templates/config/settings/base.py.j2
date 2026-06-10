@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
 
+{% endif %}{% if has_cache %}    # Cache
+    cache_redis_url: str = "redis://localhost:6379/1"
+
 {% endif %}{% if has_email %}    # Email
     email_backend: str = "django.core.mail.backends.smtp.EmailBackend"
     email_host: str = "localhost"
@@ -31,6 +34,13 @@ class Settings(BaseSettings):
     email_host_user: str = ""
     email_host_password: str = ""
     email_use_tls: bool = True
+
+{% endif %}{% if has_storage %}    # S3 / MinIO
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_storage_bucket_name: str = ""
+    aws_s3_endpoint_url: str = ""
+    aws_s3_region_name: str = "us-east-1"
 
 {% endif %}    # Security
     cors_allowed_origins: list[str] = ["http://localhost:8000"]
@@ -71,7 +81,8 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "corsheaders",
-    # Local apps
+{% if has_storage %}    "storages",
+{% endif %}    # Local apps
     "apps.accounts",
 ]
 
@@ -162,6 +173,25 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+{% if has_social %}
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": "",
+            "secret": "",
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    },
+    "github": {
+        "APP": {
+            "client_id": "",
+            "secret": "",
+        },
+        "SCOPE": ["read:user", "user:email"],
+    },
+}
+{% endif %}
 
 # ---------------------------------------------------------------------------
 # Internationalization
@@ -177,17 +207,35 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STORAGES = {
+ST{% if has_storage %}ORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+}
+AWS_ACCESS_KEY_ID = settings.aws_access_key_id
+AWS_SECRET_ACCESS_KEY = settings.aws_secret_access_key
+AWS_STORAGE_BUCKET_NAME = settings.aws_storage_bucket_name
+AWS_S3_ENDPOINT_URL = settings.aws_s3_endpoint_url
+AWS_S3_REGION_NAME = settings.aws_s3_region_name
+{% else %}ORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+{% endif %}
 
 # ---------------------------------------------------------------------------
 # Media files
 # ---------------------------------------------------------------------------
+{% if has_storage %}
+MEDIA_URL = f"https://{settings.aws_s3_endpoint_url}/{settings.aws_storage_bucket_name}/"
+{% else %}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+{% endif %}
 
 # ---------------------------------------------------------------------------
 # CORS
@@ -203,12 +251,12 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 
 # ---------------------------------------------------------------------------
-{% endif %}{% if has_celery %}# Cache (Redis)
+{% endif %}{% if has_celery or has_cache %}# Cache (Redis)
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": settings.celery_broker_url,
+        "LOCATION": {% if has_cache %}settings.cache_redis_url{% else %}settings.celery_broker_url{% endif %},
     },
 }
 

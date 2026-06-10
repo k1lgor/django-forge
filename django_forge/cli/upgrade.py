@@ -52,6 +52,9 @@ def upgrade_project() -> None:
         "has_docker": "docker" in existing_layers,
         "has_celery": "celery" in existing_layers,
         "has_email": "email" in existing_layers,
+        "has_cache": "cache" in existing_layers,
+        "has_social": "social" in existing_layers,
+        "has_storage": "storage" in existing_layers,
     }
 
     # Collect files that will be overwritten

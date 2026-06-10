@@ -73,7 +73,7 @@ def test_import_version() -> None:
     """The package is importable and exposes __version__."""
     from django_forge import __version__ as ver
 
-    assert ver == "0.2.0"
+    assert ver == "0.2.1"
 
 
 def test_h_alias_shows_help() -> None:

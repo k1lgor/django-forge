@@ -7,7 +7,7 @@ from rich.prompt import Confirm
 from django_forge.cli.console import console
 from django_forge.renderer import Renderer
 
-_VALID_LAYERS = {"docker", "celery", "email"}
+_VALID_LAYERS = {"docker", "celery", "email", "cache", "social", "storage"}
 
 
 def add_layer(*, layer: str) -> None:
@@ -23,7 +23,7 @@ def add_layer(*, layer: str) -> None:
         console.print(
             "  [forge.error]"
             f"Unknown layer: '{layer}'."
-            " Available: docker, celery, email."
+            " Available: docker, celery, email, cache, social, storage."
             "[/]"
         )
         return
@@ -63,6 +63,12 @@ def add_layer(*, layer: str) -> None:
         success = _add_celery(project_dir, context, renderer, existing_layers)
     elif layer == "email":
         success = _add_email(project_dir, context, renderer, existing_layers)
+    elif layer == "cache":
+        success = _add_cache(project_dir, context, renderer, existing_layers)
+    elif layer == "social":
+        success = _add_social(project_dir, context, renderer, existing_layers)
+    elif layer == "storage":
+        success = _add_storage(project_dir, context, renderer, existing_layers)
 
     if not success:
         console.print(
@@ -161,6 +167,9 @@ def _build_add_context(project_context: dict, new_layer: str) -> dict:
         "has_docker": "docker" in all_layers,
         "has_celery": "celery" in all_layers,
         "has_email": "email" in all_layers,
+        "has_cache": "cache" in all_layers,
+        "has_social": "social" in all_layers,
+        "has_storage": "storage" in all_layers,
     }
 
 
@@ -264,6 +273,85 @@ def _add_email(
     ]
     if "docker" in existing_layers:
         modified.append((project_dir / "compose.yaml", "compose.yaml"))
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    renderer.render_project(context, project_dir)
+    return True
+
+
+def _add_cache(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    existing_layers: list[str],
+) -> bool:
+    """Add Caching layer to an existing project.
+
+    Returns ``True`` if the operation succeeded, ``False`` if skipped.
+    """
+    console.print()
+    console.print(
+        "  [forge.label]Adding [forge.highlight]Caching[/] layer...[/]"
+    )
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / "pyproject.toml", "pyproject.toml"),
+    ]
+    if "docker" in existing_layers and "celery" not in existing_layers:
+        modified.append((project_dir / "compose.yaml", "compose.yaml"))
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    renderer.render_project(context, project_dir)
+    return True
+
+
+def _add_social(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    existing_layers: list[str],
+) -> bool:
+    """Add Social Auth layer to an existing project."""
+    console.print()
+    console.print(
+        "  [forge.label]Adding [forge.highlight]Social Auth[/] layer...[/]"
+    )
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / ".env.example", ".env.example"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    renderer.render_project(context, project_dir)
+    return True
+
+
+def _add_storage(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    existing_layers: list[str],
+) -> bool:
+    """Add S3 Storage layer to an existing project."""
+    console.print()
+    console.print(
+        "  [forge.label]Adding [forge.highlight]S3 Storage[/] layer...[/]"
+    )
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / "config" / "settings" / "prod.py", "prod.py"),
+        (project_dir / "pyproject.toml", "pyproject.toml"),
+        (project_dir / ".env.example", ".env.example"),
+    ]
 
     if not _confirm_existing_files(modified):
         return False
