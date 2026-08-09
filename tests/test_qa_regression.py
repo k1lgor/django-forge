@@ -68,10 +68,10 @@ def test_all_24_combos_render(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_no_input_overwrites_existing_dir(
+def test_no_input_refuses_existing_dir(
     _mock_install, tmp_path
 ) -> None:
-    """--no-input silently overwrites existing directory."""
+    """--no-input must refuse to overwrite an existing directory."""
     os.chdir(tmp_path)
     (tmp_path / "mydir").mkdir()
     (tmp_path / "mydir" / "old.txt").write_text("old")
@@ -79,8 +79,9 @@ def test_no_input_overwrites_existing_dir(
         app, ["start", "mydir", "--no-input"]
     )
     assert result.exit_code == 0
-    assert (tmp_path / "mydir" / "manage.py").exists()
-    assert not (tmp_path / "mydir" / "old.txt").exists()
+    assert "Refusing" in result.stdout
+    assert not (tmp_path / "mydir" / "manage.py").exists()
+    assert (tmp_path / "mydir" / "old.txt").exists()
 
 
 def test_forge_list_help() -> None:

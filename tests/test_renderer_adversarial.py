@@ -375,7 +375,11 @@ def test_return_value_includes_all_files() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         result = renderer.render_project(ctx, target)
+        # The render manifest is metadata, not a rendered artifact — it is
+        # written but intentionally excluded from the returned list.
         actual_file_count = sum(1 for _ in target.rglob("*") if _.is_file())
+        if (target / ".forge-manifest.json").exists():
+            actual_file_count -= 1
         assert len(result) == actual_file_count
         # Each entry has non-negative content length
         # (empty files like __init__.py legitimately have 0 bytes)

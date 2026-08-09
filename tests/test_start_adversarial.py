@@ -269,8 +269,10 @@ def test_secret_key_no_jinja_conflict() -> None:
 
 
 def test_start_rejects_empty_name() -> None:
+    """Empty project name is refused with a clear message."""
     result = runner.invoke(app, ["start", ""])
-    assert result.exit_code != 0
+    assert result.exit_code == 0
+    assert "cannot be empty" in result.stdout
 
 
 # ---------------------------------------------------------------------------

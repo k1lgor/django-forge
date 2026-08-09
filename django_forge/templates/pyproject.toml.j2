@@ -18,6 +18,9 @@ dependencies = [
     "django-cors-headers~=4.7.0",
     "pydantic-settings~=2.8.0",
     "django-allauth~=65.6.0",
+{%- if has_docker %}
+    "gunicorn~=23.0",
+{%- endif %}
 {%- if has_celery %}
     "celery~=5.4.0",
     "redis>=5.0,<6.0",

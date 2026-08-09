@@ -207,31 +207,37 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-ST{%- if has_storage %}ORAGES = {
+STORAGES = {
+{%- if has_storage %}
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
     "staticfiles": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
+{%- else %}
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+{%- endif %}
 }
+{% if has_storage %}
 AWS_ACCESS_KEY_ID = settings.aws_access_key_id
 AWS_SECRET_ACCESS_KEY = settings.aws_secret_access_key
 AWS_STORAGE_BUCKET_NAME = settings.aws_storage_bucket_name
 AWS_S3_ENDPOINT_URL = settings.aws_s3_endpoint_url
 AWS_S3_REGION_NAME = settings.aws_s3_region_name
-{% else %}ORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
-{%- endif %}
+{% endif %}
 
 # ---------------------------------------------------------------------------
 # Media files
 # ---------------------------------------------------------------------------
 {% if has_storage %}
-MEDIA_URL = f"https://{settings.aws_s3_endpoint_url}/{settings.aws_storage_bucket_name}/"
+MEDIA_URL = (
+    f"https://{settings.aws_s3_endpoint_url}/{settings.aws_storage_bucket_name}/"
+    if settings.aws_s3_endpoint_url
+    else f"https://{settings.aws_storage_bucket_name}.s3.amazonaws.com/"
+)
 {% else %}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -301,19 +307,7 @@ LOGGING = {
 }
 
 # ---------------------------------------------------------------------------
-# Production security settings
-# ---------------------------------------------------------------------------
-# These are only applied when DEBUG=False
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# ---------------------------------------------------------------------------
 # Default primary key field type
 # ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+

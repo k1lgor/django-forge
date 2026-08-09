@@ -10,16 +10,20 @@
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+{%- if db == "postgres" or has_celery or has_cache %}
     depends_on:
+{%- endif %}
+{%- if db == "postgres" %}
       db:
         condition: service_healthy
+{%- endif %}
 {%- if has_celery or has_cache %}
       redis:
         condition: service_started
 {%- endif %}
 
-  db:
 {%- if db == "postgres" %}
+  db:
     image: postgres:17-alpine
     restart: unless-stopped
     volumes:
@@ -35,16 +39,6 @@
       retries: 5
     ports:
       - "5432:5432"
-{%- else %}
-    image: nouchka/sqlite3:latest
-    restart: unless-stopped
-    volumes:
-      - sqlite_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "sqlite3 /data/db.sqlite3 'SELECT 1;'"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 {%- endif %}
 
 {%- if has_celery or has_cache %}
@@ -79,8 +73,6 @@ volumes:
   media_volume:
 {%- if db == "postgres" %}
   postgres_data:
-{%- else %}
-  sqlite_data:
 {%- endif %}
 {%- if has_celery or has_cache %}
   redis_data:

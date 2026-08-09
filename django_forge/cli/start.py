@@ -4,6 +4,7 @@ Replaces the stub from Story 1.1 with the full pipeline:
 prompt -> render -> install -> success.
 """
 
+import re
 import secrets
 import subprocess
 import sys
@@ -16,20 +17,44 @@ from django_forge.cli.prefs import save_prefs
 from django_forge.cli.prompts import confirm_scaffold
 from django_forge.renderer import Renderer
 
+_PROJECT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+_BAD_NAME_PART = re.compile(r"[\\/]|\.\.|^\.|\{\{|\{%|[\x00-\x1f\x7f]")
 
-def start_project(
-    *, project_name: str, no_input: bool = False
-) -> None:
+
+def validate_project_name(name: str) -> str | None:
+    """Return an error message if *name* is unsafe, else ``None``.
+
+    Rejects path separators, ``..`` escapes, leading dots, Jinja2
+    delimiters, and control characters so a hostile project name can
+    never escape the working directory or inject into templates.
+    """
+    if not name:
+        return "Project name cannot be empty."
+    if _BAD_NAME_PART.search(name):
+        return (
+            "Project name contains invalid characters. Use letters, digits, "
+            "dots, underscores, and hyphens only."
+        )
+    if not _PROJECT_NAME_RE.match(name):
+        return (
+            "Project name must start with a letter or digit and contain only "
+            "letters, digits, dots, underscores, or hyphens."
+        )
+    return None
+
+
+def start_project(*, project_name: str, no_input: bool = False) -> None:
     """Scaffold a new Django project.
 
     Full end-to-end flow:
     1. Detect CI/no-input mode
     2. Brand banner
-    3. Check target directory
-    4. Confirm scaffold settings with user
-    5. Generate template files via renderer
-    6. Install dependencies, migrate, deploy-check
-    7. Print success banner with next steps
+    3. Validate project name
+    4. Check target directory
+    5. Confirm scaffold settings with user
+    6. Generate template files via renderer
+    7. Install dependencies, migrate, deploy-check
+    8. Print success banner with next steps
     """
     # 0. Detect CI / no-input mode
     ci_detected = False
@@ -40,18 +65,39 @@ def start_project(
     # 1. Brand banner
     _print_banner(project_name, no_input=no_input, ci_detected=ci_detected)
 
-    # 2. Check target directory
-    target_dir = Path.cwd() / project_name
-    if no_input and target_dir.exists():
-        import shutil
-        shutil.rmtree(target_dir)
-    elif target_dir.exists() and not _handle_existing_directory(target_dir):
+    # 2. Validate project name before touching the filesystem
+    name_error = validate_project_name(project_name)
+    if name_error:
+        console.print()
+        console.print(f"  [forge.error]{name_error}[/]")
         return
 
-    # 3. Confirm scaffold settings
+    # 3. Check target directory
+    target_dir = Path.cwd() / project_name
+    if target_dir.exists():
+        if no_input:
+            console.print()
+            console.print(
+                f"  [forge.error]Directory [forge.highlight]{project_name}[/] already exists.[/]"
+            )
+            console.print(
+                "  [forge.muted]"
+                "Refusing to overwrite in --no-input mode. Remove the "
+                "directory manually or run interactively."
+                "[/]"
+            )
+            return
+        if not _handle_existing_directory(target_dir):
+            return
+
+    # 4. Confirm scaffold settings
     secret_key = _generate_secret_key()
     context = confirm_scaffold(
-        project_name, api=None, db=None, layers=None, no_input=no_input,
+        project_name,
+        api=None,
+        db=None,
+        layers=None,
+        no_input=no_input,
     )
     if context is None:
         return
@@ -62,9 +108,7 @@ def start_project(
     # 4. Generate template files
     renderer = _get_renderer()
     console.print()
-    console.print(
-        f"  [forge.label]Forging [forge.highlight]{project_name}[/]..."
-    )
+    console.print(f"  [forge.label]Forging [forge.highlight]{project_name}[/]...")
     renderer.render_project(context, target_dir)
 
     # 5. Post-install steps
@@ -92,21 +136,14 @@ def _print_banner(
     console.print(banner)
     console.print()
     console.print(
-        f"  [forge.label]Forge your Django project:[/]  "
-        f"[forge.highlight]{project_name}[/]"
+        f"  [forge.label]Forge your Django project:[/]  [forge.highlight]{project_name}[/]"
     )
     if no_input:
         console.print()
         if ci_detected:
-            console.print(
-                "  [forge.info]CI mode detected"
-                " - using defaults[/]"
-            )
+            console.print("  [forge.info]CI mode detected - using defaults[/]")
         else:
-            console.print(
-                "  [forge.info]Using defaults"
-                " (--no-input mode)[/]"
-            )
+            console.print("  [forge.info]Using defaults (--no-input mode)[/]")
 
 
 def _handle_existing_directory(target_dir: Path) -> bool:
@@ -119,18 +156,16 @@ def _handle_existing_directory(target_dir: Path) -> bool:
 
     console.print()
     console.print(
-        "  [forge.warning]"
-        f"Directory [forge.highlight]{target_dir.name}[/]"
-        " already exists"
-        "[/]"
+        f"  [forge.warning]Directory [forge.highlight]{target_dir.name}[/] already exists[/]"
     )
     console.print()
 
-    response = input("  Overwrite? [y/N] ").strip().lower()
+    try:
+        response = input("  Overwrite? [y/N] ").strip().lower()
+    except EOFError:
+        response = ""
     if response not in ("y", "yes"):
-        console.print(
-            "  [forge.muted]Aborted. No files were changed.[/]"
-        )
+        console.print("  [forge.muted]Aborted. No files were changed.[/]")
         return False
 
     shutil.rmtree(target_dir)
@@ -146,9 +181,7 @@ def _generate_secret_key() -> str:
 
 def _get_renderer() -> Renderer:
     """Get a Renderer pointing to the embedded template tree."""
-    template_root = (
-        Path(__file__).resolve().parent.parent / "templates"
-    )
+    template_root = Path(__file__).resolve().parent.parent / "templates"
     return Renderer(template_root)
 
 
@@ -161,25 +194,18 @@ def _print_success(project_name: str) -> None:
     console.print()
     console.print("  [forge.label]Next steps:[/]")
     console.print(f"    [forge.highlight]cd {project_name}[/]")
-    console.print(
-        "    [forge.highlight]uv run manage.py runserver[/]"
-    )
+    console.print("    [forge.highlight]uv run manage.py runserver[/]")
     console.print()
-    console.print(
-        "  [forge.label]Set production environment variables:[/]"
-    )
-    console.print(
-        "    [forge.highlight]cp .env.example .env[/]"
-    )
-    console.print(
-        "    [forge.muted](edit .env with your secrets)[/]"
-    )
+    console.print("  [forge.label]Set production environment variables:[/]")
+    console.print("    [forge.highlight]cp .env.example .env[/]")
+    console.print("    [forge.muted](edit .env with your secrets)[/]")
     console.print()
 
 
 def _is_ci_env() -> bool:
     """Detect if running in a CI environment."""
     import os
+
     return (
         os.environ.get("CI", "").lower() == "true"
         or os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
@@ -195,11 +221,7 @@ def _prompt_createsuperuser(project_dir: Path) -> None:
     """
     if not sys.stdin.isatty():
         console.print()
-        console.print(
-            "  [forge.muted]"
-            "Non-interactive environment — skipping createsuperuser."
-            "[/]"
-        )
+        console.print("  [forge.muted]Non-interactive environment — skipping createsuperuser.[/]")
         console.print()
         return
 
@@ -208,17 +230,13 @@ def _prompt_createsuperuser(project_dir: Path) -> None:
     if response not in ("y", "yes"):
         console.print("  [forge.muted]Skipped. You can create one later with:[/]")
         console.print(
-            f"    [forge.highlight]cd {project_dir.name}"
-            " && uv run manage.py createsuperuser[/]"
+            f"    [forge.highlight]cd {project_dir.name} && uv run manage.py createsuperuser[/]"
         )
         console.print()
         return
 
     console.print()
-    console.print(
-        "  [forge.label]Running [forge.highlight]"
-        "createsuperuser[/]..."
-    )
+    console.print("  [forge.label]Running [forge.highlight]createsuperuser[/]...")
     console.print()
     try:
         subprocess.run(
@@ -227,7 +245,5 @@ def _prompt_createsuperuser(project_dir: Path) -> None:
             check=False,
         )
     except FileNotFoundError:
-        console.print(
-            "  [forge.error]uv not found — cannot run createsuperuser.[/]"
-        )
+        console.print("  [forge.error]uv not found — cannot run createsuperuser.[/]")
     console.print()

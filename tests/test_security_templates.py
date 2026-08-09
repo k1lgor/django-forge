@@ -66,22 +66,44 @@ def test_logging_has_formatter(rendered: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_security_settings_present(rendered: Path) -> None:
-    """1.6.B — Security settings are present in base.py."""
-    src = (rendered / "config" / "settings" / "base.py").read_text()
+def test_security_settings_present_in_prod(rendered: Path) -> None:
+    """1.6.B — Security settings are present in prod.py.
+
+    They live in prod.py, not base.py: base.py is imported with DEBUG=True
+    by default, so an ``if not DEBUG:`` block there would evaluate before
+    prod.py flips the flag and the settings would never apply.
+    """
+    src = (rendered / "config" / "settings" / "prod.py").read_text()
     assert "SECURE_SSL_REDIRECT" in src
     assert "SESSION_COOKIE_SECURE" in src
     assert "CSRF_COOKIE_SECURE" in src
     assert "SECURE_HSTS_SECONDS" in src
     assert "SECURE_HSTS_INCLUDE_SUBDOMAINS" in src
-    assert "SECURE_BROWSER_XSS_FILTER" in src
+    assert "SECURE_PROXY_SSL_HEADER" in src
+    assert "SECURE_REFERRER_POLICY" in src
 
 
-def test_security_settings_inside_if_not_debug(rendered: Path) -> None:
-    """1.6.L — Security settings are wrapped in if not DEBUG condition."""
-    src = (rendered / "config" / "settings" / "base.py").read_text()
-    assert "not DEBUG" in src
-    assert "if not DEBUG:" in src
+def test_security_settings_not_gated_on_import_time_debug(rendered: Path) -> None:
+    """Security settings must not be gated on `if not DEBUG` in base.py.
+
+    Regression: the old base.py evaluated `if not DEBUG:` at import time
+    (DEBUG defaulted to True), so the block never fired for prod.py which
+    sets DEBUG=False only after importing base.
+    """
+    base = (rendered / "config" / "settings" / "base.py").read_text()
+    prod = (rendered / "config" / "settings" / "prod.py").read_text()
+    assert "if not DEBUG:" not in base
+    assert "if not DEBUG:" not in prod
+    assert "SECURE_SSL_REDIRECT" in prod
+
+
+def test_xss_filter_setting_removed(rendered: Path) -> None:
+    """SECURE_BROWSER_XSS_FILTER was removed in Django 5.0 (generated
+    projects pin django~=5.1) — it must not appear in any settings file."""
+    base = (rendered / "config" / "settings" / "base.py").read_text()
+    prod = (rendered / "config" / "settings" / "prod.py").read_text()
+    assert "SECURE_BROWSER_XSS_FILTER" not in base
+    assert "SECURE_BROWSER_XSS_FILTER" not in prod
 
 
 # ---------------------------------------------------------------------------

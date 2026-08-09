@@ -1,0 +1,9 @@
+{% if use_pure_django %}{{ "{%" }} extends "base.html" {{ "%}" }}
+
+{{ "{%" }} block title {{ "%}" }}Profile{{ "{%" }} endblock title {{ "%}" }}
+
+{{ "{%" }} block content {{ "%}" }}
+<h2>Profile</h2>
+<p>Logged in as {{ "{{" }} user.email {{ "}}" }}.</p>
+{{ "{%" }} endblock content {{ "%}" }}
+{% endif %}

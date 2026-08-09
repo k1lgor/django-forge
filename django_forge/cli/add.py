@@ -1,14 +1,19 @@
 """``forge add <layer>`` — add optional layers to existing forge projects."""
 
+import re
 from pathlib import Path
 
 from rich.prompt import Confirm
 
 from django_forge import __version__ as _forge_version
 from django_forge.cli.console import console
+from django_forge.cli.start import _generate_secret_key
 from django_forge.renderer import Renderer
 
 _VALID_LAYERS = {"docker", "celery", "email", "cache", "social", "storage"}
+
+_SECRET_RE_ENV = re.compile(r'^DJANGO_SECRET_KEY\s*=\s*"?([^"\n#]+)', re.MULTILINE)
+_SECRET_RE_SETTINGS = re.compile(r'django_secret_key:\s*str\s*=\s*"([^"]+)"')
 
 
 def add_layer(*, layer: str) -> None:
@@ -46,13 +51,12 @@ def add_layer(*, layer: str) -> None:
     existing_layers: list[str] = project_context.get("layers", [])
     if layer in existing_layers:
         console.print()
-        console.print(
-            f"  [forge.info]{layer.capitalize()} already installed.[/]"
-        )
+        console.print(f"  [forge.info]{layer.capitalize()} already installed.[/]")
         return
 
     # Build updated context
     context = _build_add_context(project_context, layer)
+    context["secret_key"] = _load_existing_secret(project_dir) or _generate_secret_key()
 
     # Dispatch to layer handler
     renderer = _get_renderer()
@@ -72,9 +76,7 @@ def add_layer(*, layer: str) -> None:
         success = _add_storage(project_dir, context, renderer, existing_layers)
 
     if not success:
-        console.print(
-            "  [forge.muted]No files were changed.[/]"
-        )
+        console.print("  [forge.muted]No files were changed.[/]")
         return
 
     # Update .forge.toml
@@ -82,9 +84,7 @@ def add_layer(*, layer: str) -> None:
     _update_forge_toml(project_dir / ".forge.toml", new_layers)
 
     console.print()
-    console.print(
-        f"  [forge.success]Added [forge.highlight]{layer}[/] layer.[/]"
-    )
+    console.print(f"  [forge.success]Added [forge.highlight]{layer}[/] layer.[/]")
     console.print()
 
 
@@ -101,15 +101,8 @@ def _detect_project(project_dir: Path) -> dict | None:
     forge_toml = project_dir / ".forge.toml"
     if not forge_toml.exists():
         console.print()
-        console.print(
-            "  [forge.error]Not a forge project.[/]"
-        )
-        console.print(
-            "  [forge.muted]"
-            "Run [forge.highlight]forge start myproject[/]"
-            " first."
-            "[/]"
-        )
+        console.print("  [forge.error]Not a forge project.[/]")
+        console.print("  [forge.muted]Run [forge.highlight]forge start myproject[/] first.[/]")
         return None
 
     try:
@@ -120,9 +113,7 @@ def _detect_project(project_dir: Path) -> dict | None:
         forge_section = data.get("forge", {})
         if not forge_section:
             console.print()
-            console.print(
-                "  [forge.error]Not a forge project.[/]"
-            )
+            console.print("  [forge.error]Not a forge project.[/]")
             return None
         return {
             "api": forge_section.get("api", "drf"),
@@ -131,11 +122,7 @@ def _detect_project(project_dir: Path) -> dict | None:
         }
     except Exception:
         console.print()
-        console.print(
-            "  [forge.error]"
-            "Invalid .forge.toml. The file may be corrupted."
-            "[/]"
-        )
+        console.print("  [forge.error]Invalid .forge.toml. The file may be corrupted.[/]")
         return None
 
 
@@ -180,11 +167,42 @@ def _build_add_context(project_context: dict, new_layer: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _render_layers(renderer: Renderer, context: dict, project_dir: Path) -> None:
+    """Re-render the project tree, leaving user-edited files untouched.
+
+    Uses ``policy="pristine"``: files forge wrote and the user has not
+    modified are refreshed; user-modified or user-created files are skipped
+    and reported.
+    """
+    renderer.render_project(context, project_dir, policy="pristine")
+    for output_name, _reason in renderer.skipped:
+        console.print(f"  [forge.muted]Skipped {output_name} (user-modified)[/]")
+
+
+def _load_existing_secret(project_dir: Path) -> str:
+    """Return the project's existing SECRET_KEY, or ``""`` if none found.
+
+    Reads ``DJANGO_SECRET_KEY`` from ``.env`` first, then the
+    ``django_secret_key`` default from ``config/settings/base.py``. This
+    keeps re-renders (``forge add`` / ``forge upgrade``) from blanking
+    the secret, which the render context does not carry.
+    """
+    env_file = project_dir / ".env"
+    if env_file.exists():
+        match = _SECRET_RE_ENV.search(env_file.read_text(encoding="utf-8"))
+        if match:
+            return match.group(1).strip()
+    base_py = project_dir / "config" / "settings" / "base.py"
+    if base_py.exists():
+        match = _SECRET_RE_SETTINGS.search(base_py.read_text(encoding="utf-8"))
+        if match:
+            return match.group(1)
+    return ""
+
+
 def _get_renderer() -> Renderer:
     """Get a Renderer pointing to the embedded template tree."""
-    template_root = (
-        Path(__file__).resolve().parent.parent / "templates"
-    )
+    template_root = Path(__file__).resolve().parent.parent / "templates"
     return Renderer(template_root)
 
 
@@ -204,9 +222,7 @@ def _add_docker(
     Returns ``True`` if the operation succeeded, ``False`` if skipped.
     """
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]Docker[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]Docker[/] layer...[/]")
 
     modified: list[tuple[Path, str]] = [
         (project_dir / "Dockerfile", "Dockerfile"),
@@ -216,7 +232,7 @@ def _add_docker(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -231,9 +247,7 @@ def _add_celery(
     Returns ``True`` if the operation succeeded, ``False`` if skipped.
     """
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]Celery[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]Celery[/] layer...[/]")
 
     # Files that will be re-rendered (overwritten)
     modified: list[tuple[Path, str]] = [
@@ -247,7 +261,7 @@ def _add_celery(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -262,9 +276,7 @@ def _add_email(
     Returns ``True`` if the operation succeeded, ``False`` if skipped.
     """
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]Email[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]Email[/] layer...[/]")
 
     # Files that will be re-rendered (overwritten)
     modified: list[tuple[Path, str]] = [
@@ -279,7 +291,7 @@ def _add_email(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -294,9 +306,7 @@ def _add_cache(
     Returns ``True`` if the operation succeeded, ``False`` if skipped.
     """
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]Caching[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]Caching[/] layer...[/]")
 
     modified: list[tuple[Path, str]] = [
         (project_dir / "config" / "settings" / "base.py", "base.py"),
@@ -308,7 +318,7 @@ def _add_cache(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -325,9 +335,7 @@ def _add_social(
     route — no additional URL patterns are needed.
     """
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]Social Auth[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]Social Auth[/] layer...[/]")
 
     modified: list[tuple[Path, str]] = [
         (project_dir / "config" / "settings" / "base.py", "base.py"),
@@ -337,7 +345,7 @@ def _add_social(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -349,9 +357,7 @@ def _add_storage(
 ) -> bool:
     """Add S3 Storage layer to an existing project."""
     console.print()
-    console.print(
-        "  [forge.label]Adding [forge.highlight]S3 Storage[/] layer...[/]"
-    )
+    console.print("  [forge.label]Adding [forge.highlight]S3 Storage[/] layer...[/]")
 
     modified: list[tuple[Path, str]] = [
         (project_dir / "config" / "settings" / "base.py", "base.py"),
@@ -363,7 +369,7 @@ def _add_storage(
     if not _confirm_existing_files(modified):
         return False
 
-    renderer.render_project(context, project_dir)
+    _render_layers(renderer, context, project_dir)
     return True
 
 
@@ -373,28 +379,45 @@ def _add_storage(
 
 
 def _update_forge_toml(path: Path, layers: list[str]) -> None:
-    """Update the layers list in an existing .forge.toml."""
+    """Update the layers list in an existing .forge.toml.
+
+    Preserves every other key in ``[forge]`` and any additional top-level
+    sections (e.g. ``[database]``). Plain string/list/scalar values are
+    serialized manually to avoid adding a tomli_w dependency.
+    """
     import tomli
 
     raw = path.read_text(encoding="utf-8")
     data = tomli.loads(raw)
-    if "forge" not in data:
-        data["forge"] = {}
+    data.setdefault("forge", {})
     data["forge"]["layers"] = sorted(set(layers))
 
-    # Manual TOML serialization — avoids adding tomli_w dependency
-    api = data["forge"].get("api", "drf")
-    db = data["forge"].get("db", "postgres")
-    version = data["forge"].get("version", "0.1.0")
-    items = ", ".join(f'"{layer}"' for layer in sorted(set(layers)))
-    toml_content = (
-        f'[forge]\n'
-        f'version = "{version}"\n'
-        f'api = "{api}"\n'
-        f'db = "{db}"\n'
-        f'layers = [{items}]\n'
-    )
-    path.write_text(toml_content, encoding="utf-8")
+    lines: list[str] = ["[forge]"]
+    forge = data.pop("forge")
+    lines.extend(_serialize_table(forge))
+    for section in sorted(data):
+        lines.append("")
+        lines.append(f"[{section}]")
+        lines.extend(_serialize_table(data[section]))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _serialize_table(table: dict) -> list[str]:
+    """Serialize a flat TOML table (strings, lists, scalars) as lines."""
+    lines: list[str] = []
+    for key, value in table.items():
+        if isinstance(value, str):
+            lines.append(f'{key} = "{value}"')
+        elif isinstance(value, bool):
+            lines.append(f"{key} = {'true' if value else 'false'}")
+        elif isinstance(value, (int, float)):
+            lines.append(f"{key} = {value}")
+        elif isinstance(value, list):
+            items = ", ".join(f'"{item}"' if isinstance(item, str) else str(item) for item in value)
+            lines.append(f"{key} = [{items}]")
+        else:
+            lines.append(f'{key} = "{value}"')
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -416,11 +439,7 @@ def _confirm_existing_files(files: list[tuple[Path, str]]) -> bool:
         return True
 
     console.print()
-    console.print(
-        "  [forge.warning]"
-        "The following files will be overwritten:"
-        "[/]"
-    )
+    console.print("  [forge.warning]The following files will be overwritten:[/]")
     for _path, label in existing:
         console.print(f"    [forge.muted]- {label}[/]")
     console.print()

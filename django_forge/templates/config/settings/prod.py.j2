@@ -5,11 +5,28 @@ from config.settings.base import *  # noqa: F403, F401
 # Debug disabled for production
 DEBUG = False
 
-# Allow all hosts behind a proxy
-ALLOWED_HOSTS = ["*"]
+# Hosts are controlled via the ALLOWED_HOSTS environment variable
+# (comma-separated). The base default is localhost-only; set it to your
+# real domains in production, e.g. ALLOWED_HOSTS=example.com,api.example.com.
+ALLOWED_HOSTS = settings.allowed_hosts
 
 {%- if has_email %}# SMTP email backend for production
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_SSL = True
 EMAIL_PORT = 465
 {% endif %}
+
+# Production security settings.
+# These live in prod.py (not base.py) because base.py is imported with
+# DEBUG=True by default — an import-time DEBUG gate there would evaluate
+# before this file flips the flag and the settings would never apply.
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+X_FRAME_OPTIONS = "DENY"

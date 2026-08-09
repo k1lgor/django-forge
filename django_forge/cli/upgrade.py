@@ -5,6 +5,7 @@ from pathlib import Path
 from django_forge import __version__ as _forge_version
 from django_forge.cli.add import (
     _confirm_existing_files,
+    _load_existing_secret,
     _update_forge_toml,
 )
 from django_forge.cli.console import console
@@ -38,7 +39,7 @@ def upgrade_project() -> None:
     db = project_context.get("db", "postgres")
     project_name = project_dir.name
     project_slug = project_name.replace("-", "_").replace(" ", "_")
-    secret_key = ""
+    secret_key = _load_existing_secret(project_dir)
 
     context = {
         "project_name": project_name,
@@ -78,42 +79,29 @@ def upgrade_project() -> None:
 
     if not existing_files:
         console.print()
-        console.print(
-            "  [forge.muted]"
-            "No existing project files found to upgrade.[/]"
-        )
+        console.print("  [forge.muted]No existing project files found to upgrade.[/]")
         return
 
     console.print()
     console.print(
-        "  [forge.label]"
-        "Checking templates for [forge.highlight]"
-        f"{project_dir.name}[/]..."
-        "[/]"
+        f"  [forge.label]Checking templates for [forge.highlight]{project_dir.name}[/]...[/]"
     )
 
     if not _confirm_existing_files(existing_files):
-        console.print(
-            "  [forge.muted]"
-            "Upgrade cancelled. No files were changed.[/]"
-        )
+        console.print("  [forge.muted]Upgrade cancelled. No files were changed.[/]")
         return
 
     console.print()
-    console.print(
-        "  [forge.label]Upgrading project templates...[/]"
-    )
-    renderer.render_project(context, project_dir)
+    console.print("  [forge.label]Upgrading project templates...[/]")
+    renderer.render_project(context, project_dir, policy="pristine")
+    for output_name, _reason in renderer.skipped:
+        console.print(f"  [forge.muted]Skipped {output_name} (user-modified)[/]")
 
     # Update .forge.toml version
-    _update_forge_toml(
-        project_dir / ".forge.toml", list(existing_layers)
-    )
+    _update_forge_toml(project_dir / ".forge.toml", list(existing_layers))
 
     console.print()
-    console.print(
-        "  [forge.success]Project upgraded to latest templates.[/]"
-    )
+    console.print("  [forge.success]Project upgraded to latest templates.[/]")
     console.print()
 
 
@@ -125,15 +113,8 @@ def _detect_project(project_dir: Path) -> dict | None:
     forge_toml = project_dir / ".forge.toml"
     if not forge_toml.exists():
         console.print()
-        console.print(
-            "  [forge.error]Not a forge project.[/]"
-        )
-        console.print(
-            "  [forge.muted]"
-            "Run [forge.highlight]forge start myproject[/]"
-            " first."
-            "[/]"
-        )
+        console.print("  [forge.error]Not a forge project.[/]")
+        console.print("  [forge.muted]Run [forge.highlight]forge start myproject[/] first.[/]")
         return None
 
     try:
@@ -144,9 +125,7 @@ def _detect_project(project_dir: Path) -> dict | None:
         forge_section = data.get("forge", {})
         if not forge_section:
             console.print()
-            console.print(
-                "  [forge.error]Not a forge project.[/]"
-            )
+            console.print("  [forge.error]Not a forge project.[/]")
             return None
         return {
             "api": forge_section.get("api", "drf"),
@@ -155,9 +134,5 @@ def _detect_project(project_dir: Path) -> dict | None:
         }
     except Exception:
         console.print()
-        console.print(
-            "  [forge.error]"
-            "Invalid .forge.toml. The file may be corrupted."
-            "[/]"
-        )
+        console.print("  [forge.error]Invalid .forge.toml. The file may be corrupted.[/]")
         return None
