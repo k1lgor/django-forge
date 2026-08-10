@@ -57,6 +57,11 @@ def upgrade_project() -> None:
         "has_cache": "cache" in existing_layers,
         "has_social": "social" in existing_layers,
         "has_storage": "storage" in existing_layers,
+        "has_healthcheck": "healthcheck" in existing_layers,
+        "has_audit": "audit" in existing_layers,
+        "has_backup": "backup" in existing_layers,
+        "has_seed": "seed" in existing_layers,
+        "has_preflight": "preflight" in existing_layers,
         "forge_version": _forge_version,
     }
 

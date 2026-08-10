@@ -1,0 +1,21 @@
+{% if has_seed %}"""Seed development data with realistic sample users."""
+
+from django.core.management.base import BaseCommand
+
+from apps.accounts.factories import UserFactory
+
+
+class Command(BaseCommand):
+    """Create sample users for local development."""
+
+    help = "Seed dev data — creates sample users via factory-boy."
+
+    def add_arguments(self, parser) -> None:
+        parser.add_argument("--users", type=int, default=10, help="Number of users")
+
+    def handle(self, *args, **options) -> None:
+        count = options["users"]
+        for _ in range(count):
+            UserFactory()
+        self.stdout.write(self.style.SUCCESS(f"Created {count} sample users"))
+{% endif %}

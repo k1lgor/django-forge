@@ -21,6 +21,15 @@ dependencies = [
 {%- if has_docker %}
     "gunicorn~=23.0",
 {%- endif %}
+{%- if has_audit %}
+    "django-simple-history>=3.7,<4.0",
+{%- endif %}
+{%- if has_healthcheck %}
+    "django-health-check~=3.18",
+{%- endif %}
+{%- if has_backup %}
+    "django-dbbackup>=4.2,<5.0",
+{%- endif %}
 {%- if has_celery %}
     "celery~=5.4.0",
     "redis>=5.0,<6.0",

@@ -2,13 +2,16 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+{%- if has_audit %}
+from simple_history.admin import SimpleHistoryAdmin
+{%- endif %}
 
 from apps.accounts.forms import UserChangeForm, UserCreationForm
 from apps.accounts.models import User
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(BaseUserAdmin{% if has_audit %}, SimpleHistoryAdmin{% endif %}):
     """Admin configuration for the custom User model."""
 
     form = UserChangeForm

@@ -74,3 +74,46 @@ Key variables:
 3. Configure `DATABASE_URL` for PostgreSQL
 4. Run `uv run manage.py collectstatic` for static files
 5. Use `uv run uvicorn --workers 4 config.asgi:application`
+{% if has_healthcheck %}
+6. Health checks: `GET /healthz/` returns 200 when DB{% if has_cache or has_celery %}, cache,{% endif %}{% if has_celery %} and broker{% endif %} checks pass
+{% endif %}
+{% if has_backup %}
+
+## Backups
+
+Database backups use [django-dbbackup](https://django-dbbackup.readthedocs.io/):
+
+```bash
+make backup    # dump the database
+make restore   # restore the latest dump (never against production)
+```
+
+Without Celery, schedule a nightly dump with cron:
+
+```bash
+0 2 * * * cd /path/to/{{ project_name }} && uv run manage.py dbbackup
+```
+
+Test the restore drill into a scratch database before you need it.
+{% endif %}
+{% if has_seed %}
+
+## Dev data
+
+```bash
+make seed    # create 10 sample users (factory-based)
+```
+
+Add more users with `uv run manage.py seed --users 50`.
+{% endif %}
+{% if has_preflight %}
+
+## Pre-deploy checks
+
+```bash
+make preflight    # check --deploy + pending migrations + migrate --check
+```
+
+Run this before pushing — it fails loudly if the deploy check, pending
+migrations, or migration state is broken.
+{% endif %}

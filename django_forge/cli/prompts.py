@@ -17,10 +17,11 @@ _FRAMEWORKS = {
 }
 
 _DATABASES = {
-    "1": ("PostgreSQL (production) + SQLite (development)",
-          "Production-ready, SQLite for fast local dev"),
-    "2": ("SQLite only",
-          "Simpler setup, no PostgreSQL dependency"),
+    "1": (
+        "PostgreSQL (production) + SQLite (development)",
+        "Production-ready, SQLite for fast local dev",
+    ),
+    "2": ("SQLite only", "Simpler setup, no PostgreSQL dependency"),
 }
 
 _LAYERS = {
@@ -30,6 +31,11 @@ _LAYERS = {
     "4": ("Caching", "Redis cache backend"),
     "5": ("Social Auth", "Google + GitHub OAuth via allauth"),
     "6": ("S3 Storage", "S3/MinIO static + media file storage"),
+    "7": ("Health Check", "/healthz endpoint for load balancers"),
+    "8": ("Audit Trail", "Record every model change (django-simple-history)"),
+    "9": ("Backup", "Nightly DB backups (django-dbbackup)"),
+    "10": ("Seed Data", "Factory-based dev data seeding"),
+    "11": ("Preflight", "Pre-deploy safety checks command"),
 }
 
 _LAYER_KEY_MAP = {
@@ -39,6 +45,11 @@ _LAYER_KEY_MAP = {
     "4": "cache",
     "5": "social",
     "6": "storage",
+    "7": "healthcheck",
+    "8": "audit",
+    "9": "backup",
+    "10": "seed",
+    "11": "preflight",
 }
 
 _BASE_CONTEXT = {
@@ -57,6 +68,11 @@ _BASE_CONTEXT = {
     "has_cache": False,
     "has_social": False,
     "has_storage": False,
+    "has_healthcheck": False,
+    "has_audit": False,
+    "has_backup": False,
+    "has_seed": False,
+    "has_preflight": False,
 }
 
 
@@ -94,7 +110,10 @@ def confirm_scaffold(
 
     if no_input:
         return _build_context(
-            project_name, api=api, db=db, layers=list(layers),
+            project_name,
+            api=api,
+            db=db,
+            layers=list(layers),
         )
 
     # Question 1: API Framework
@@ -110,24 +129,13 @@ def confirm_scaffold(
 
     # Summary
     console.print()
-    console.print(
-        "[forge.separator]───────────────────────────────────────[/]"
-    )
+    console.print("[forge.separator]───────────────────────────────────────[/]")
     console.print()
-    console.print(
-        f"  [forge.primary]Project:[/]   [forge.highlight]{project_name}[/]"
-    )
-    console.print(
-        f"  [forge.primary]Framework:[/] [forge.label]{_api_label(api)}[/]"
-    )
-    console.print(
-        f"  [forge.primary]Database:[/]  [forge.label]{_db_label(db)}[/]"
-    )
+    console.print(f"  [forge.primary]Project:[/]   [forge.highlight]{project_name}[/]")
+    console.print(f"  [forge.primary]Framework:[/] [forge.label]{_api_label(api)}[/]")
+    console.print(f"  [forge.primary]Database:[/]  [forge.label]{_db_label(db)}[/]")
     layer_names = _layer_labels(layers)
-    console.print(
-        f"  [forge.primary]Layers:[/]    "
-        f"[forge.label]{layer_names}[/]"
-    )
+    console.print(f"  [forge.primary]Layers:[/]    [forge.label]{layer_names}[/]")
     console.print()
 
     confirmed = Confirm.ask(
@@ -164,6 +172,11 @@ def _build_context(
     context["has_cache"] = "cache" in layers
     context["has_social"] = "social" in layers
     context["has_storage"] = "storage" in layers
+    context["has_healthcheck"] = "healthcheck" in layers
+    context["has_audit"] = "audit" in layers
+    context["has_backup"] = "backup" in layers
+    context["has_seed"] = "seed" in layers
+    context["has_preflight"] = "preflight" in layers
     context["forge_version"] = _forge_version
     return context
 
@@ -229,9 +242,7 @@ def _ask_layers(default: list[str] | None = None) -> list[str]:
         console.print(f"     [forge.muted]{desc}[/]")
 
     raw = Prompt.ask(
-        "  [forge.prompt]"
-        "Select optional layers"
-        " (comma-separated numbers, or 0 for none)[/]",
+        "  [forge.prompt]Select optional layers (comma-separated numbers, or 0 for none)[/]",
         default="0",
     )
 
@@ -274,5 +285,10 @@ def _layer_labels(layers: list[str]) -> str:
         "cache": "Caching",
         "social": "Social Auth",
         "storage": "S3 Storage",
+        "healthcheck": "Health Check",
+        "audit": "Audit Trail",
+        "backup": "Backup",
+        "seed": "Seed Data",
+        "preflight": "Preflight",
     }
     return ", ".join(label_map.get(layer, layer) for layer in layers)

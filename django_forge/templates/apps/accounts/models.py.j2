@@ -2,6 +2,9 @@
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+{%- if has_audit %}
+from simple_history.models import HistoricalRecords
+{%- endif %}
 
 from apps.accounts.managers import UserManager
 
@@ -29,6 +32,9 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
 
     objects = UserManager()
+{%- if has_audit %}
+    history = HistoricalRecords()
+{%- endif %}
 
     def __str__(self) -> str:
         return self.email

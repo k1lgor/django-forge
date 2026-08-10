@@ -82,6 +82,12 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "corsheaders",
 {% if has_storage %}    "storages",
+{% endif %}{% if has_audit %}    "simple_history",
+{% endif %}{% if has_healthcheck %}    "health_check",
+    "health_check.db",
+{% endif %}{% if has_healthcheck and (has_cache or has_celery) %}    "health_check.cache",
+{% endif %}{% if has_healthcheck and has_celery %}    "health_check.contrib.celery_ping",
+{% endif %}{% if has_backup %}    "dbbackup",
 {% endif %}    # Local apps
     "apps.accounts",
 ]
@@ -99,7 +105,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
-]
+{% if has_audit %}    "simple_history.middleware.HistoryRequestMiddleware",
+{% endif %}]
 
 ROOT_URLCONF = "config.urls"
 
@@ -275,6 +282,16 @@ EMAIL_PORT = settings.email_port
 EMAIL_HOST_USER = settings.email_host_user
 EMAIL_HOST_PASSWORD = settings.email_host_password
 EMAIL_USE_TLS = settings.email_use_tls
+
+# ---------------------------------------------------------------------------
+{% endif %}{% if has_backup %}# Backup (django-dbbackup)
+# ---------------------------------------------------------------------------
+{% if has_backup and has_storage %}
+DBBACKUP_STORAGE = "dbbackup.storage.s3_storage.S3Storage"
+{% else %}
+DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
+DBBACKUP_STORAGE_OPTIONS = {"location": str(BASE_DIR / "backups")}
+{%- endif %}
 
 # ---------------------------------------------------------------------------
 {% endif %}# Logging

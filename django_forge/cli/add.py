@@ -10,7 +10,19 @@ from django_forge.cli.console import console
 from django_forge.cli.start import _generate_secret_key
 from django_forge.renderer import Renderer
 
-_VALID_LAYERS = {"docker", "celery", "email", "cache", "social", "storage"}
+_VALID_LAYERS = {
+    "docker",
+    "celery",
+    "email",
+    "cache",
+    "social",
+    "storage",
+    "healthcheck",
+    "audit",
+    "backup",
+    "seed",
+    "preflight",
+}
 
 _SECRET_RE_ENV = re.compile(r'^DJANGO_SECRET_KEY\s*=\s*"?([^"\n#]+)', re.MULTILINE)
 _SECRET_RE_SETTINGS = re.compile(r'django_secret_key:\s*str\s*=\s*"([^"]+)"')
@@ -29,7 +41,8 @@ def add_layer(*, layer: str) -> None:
         console.print(
             "  [forge.error]"
             f"Unknown layer: '{layer}'."
-            " Available: docker, celery, email, cache, social, storage."
+            " Available: docker, celery, email, cache, social, storage,"
+            " healthcheck, audit, backup, seed, preflight."
             "[/]"
         )
         return
@@ -74,6 +87,16 @@ def add_layer(*, layer: str) -> None:
         success = _add_social(project_dir, context, renderer, existing_layers)
     elif layer == "storage":
         success = _add_storage(project_dir, context, renderer, existing_layers)
+    elif layer == "healthcheck":
+        success = _add_healthcheck(project_dir, context, renderer, existing_layers)
+    elif layer == "audit":
+        success = _add_audit(project_dir, context, renderer, existing_layers)
+    elif layer == "backup":
+        success = _add_backup(project_dir, context, renderer, existing_layers)
+    elif layer == "seed":
+        success = _add_seed(project_dir, context, renderer, existing_layers)
+    elif layer == "preflight":
+        success = _add_preflight(project_dir, context, renderer, existing_layers)
 
     if not success:
         console.print("  [forge.muted]No files were changed.[/]")
@@ -158,6 +181,11 @@ def _build_add_context(project_context: dict, new_layer: str) -> dict:
         "has_cache": "cache" in all_layers,
         "has_social": "social" in all_layers,
         "has_storage": "storage" in all_layers,
+        "has_healthcheck": "healthcheck" in all_layers,
+        "has_audit": "audit" in all_layers,
+        "has_backup": "backup" in all_layers,
+        "has_seed": "seed" in all_layers,
+        "has_preflight": "preflight" in all_layers,
         "forge_version": _forge_version,
     }
 
@@ -364,6 +392,146 @@ def _add_storage(
         (project_dir / "config" / "settings" / "prod.py", "prod.py"),
         (project_dir / "pyproject.toml", "pyproject.toml"),
         (project_dir / ".env.example", ".env.example"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    _render_layers(renderer, context, project_dir)
+    return True
+
+
+def _add_healthcheck(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    _existing_layers: list[str],
+) -> bool:
+    """Add Health Check layer to an existing project.
+
+    Mounts django-health-check at ``/healthz/`` with DB (always) and
+    cache/celery checks when those layers are present.
+    """
+    console.print()
+    console.print("  [forge.label]Adding [forge.highlight]Health Check[/] layer...[/]")
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / "config" / "urls.py", "config/urls.py"),
+        (project_dir / "pyproject.toml", "pyproject.toml"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    _render_layers(renderer, context, project_dir)
+    return True
+
+
+def _add_audit(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    _existing_layers: list[str],
+) -> bool:
+    """Add Audit Trail layer to an existing project.
+
+    Records every change to the custom User model via django-simple-history.
+    Schema-changing: after rendering, run ``uv sync``, then
+    ``makemigrations accounts`` and ``migrate`` (printed as next steps).
+    """
+    console.print()
+    console.print("  [forge.label]Adding [forge.highlight]Audit Trail[/] layer...[/]")
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "apps" / "accounts" / "models.py", "models.py"),
+        (project_dir / "apps" / "accounts" / "admin.py", "admin.py"),
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / "pyproject.toml", "pyproject.toml"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    _render_layers(renderer, context, project_dir)
+
+    console.print()
+    console.print("  [forge.label]Next steps (new dependency + schema change):[/]")
+    console.print("    [forge.highlight]uv sync[/]")
+    console.print("    [forge.highlight]uv run manage.py makemigrations accounts[/]")
+    console.print("    [forge.highlight]uv run manage.py migrate[/]")
+    return True
+
+
+def _add_backup(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    _existing_layers: list[str],
+) -> bool:
+    """Add Backup layer to an existing project.
+
+    django-dbbackup dumps the database (to S3 when the storage layer is
+    present, else to ``backups/``) with ``make backup`` / ``make restore``.
+    """
+    console.print()
+    console.print("  [forge.label]Adding [forge.highlight]Backup[/] layer...[/]")
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "config" / "settings" / "base.py", "base.py"),
+        (project_dir / "pyproject.toml", "pyproject.toml"),
+        (project_dir / "Makefile", "Makefile"),
+        (project_dir / "README.md", "README.md"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    _render_layers(renderer, context, project_dir)
+    return True
+
+
+def _add_seed(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    _existing_layers: list[str],
+) -> bool:
+    """Add Seed Data layer to an existing project.
+
+    Ships a factory-based ``UserFactory`` and a ``manage.py seed`` command
+    that creates sample users in dev.
+    """
+    console.print()
+    console.print("  [forge.label]Adding [forge.highlight]Seed Data[/] layer...[/]")
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "Makefile", "Makefile"),
+    ]
+
+    if not _confirm_existing_files(modified):
+        return False
+
+    _render_layers(renderer, context, project_dir)
+    return True
+
+
+def _add_preflight(
+    project_dir: Path,
+    context: dict,
+    renderer: Renderer,
+    _existing_layers: list[str],
+) -> bool:
+    """Add Preflight layer to an existing project.
+
+    Ships ``manage.py preflight`` — one command that runs the deploy check,
+    a pending-migrations check, and ``migrate --check`` before you push.
+    """
+    console.print()
+    console.print("  [forge.label]Adding [forge.highlight]Preflight[/] layer...[/]")
+
+    modified: list[tuple[Path, str]] = [
+        (project_dir / "Makefile", "Makefile"),
     ]
 
     if not _confirm_existing_files(modified):

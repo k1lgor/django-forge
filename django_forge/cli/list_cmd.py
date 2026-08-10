@@ -6,15 +6,9 @@ from django_forge.cli.console import console
 def list_options() -> None:
     """Print all available frameworks, optional layers, and core layers."""
     console.print()
-    console.print(
-        "[forge.separator]=======================================[/]"
-    )
-    console.print(
-        "  [forge.brand]django-forge - Available Options[/]"
-    )
-    console.print(
-        "[forge.separator]=======================================[/]"
-    )
+    console.print("[forge.separator]=======================================[/]")
+    console.print("  [forge.brand]django-forge - Available Options[/]")
+    console.print("[forge.separator]=======================================[/]")
     console.print()
     _print_frameworks()
     console.print()
@@ -30,19 +24,25 @@ def _print_frameworks() -> None:
     console.print()
 
     frameworks = [
-        ("DRF",
-         "Django REST Framework - the classic choice.",
-         "Mature, large ecosystem, serializer-based.",
-         "JWT auth (simplejwt), browsable API, filtering."),
-        ("Django-Ninja",
-         "Modern, type-hint native, Pydantic-based.",
-         "~5x faster request handling than DRF.",
-         "JWT auth, OpenAPI docs, async views.",
-         "recommended for new projects"),
-        ("Pure Django",
-         "No API framework. Traditional Django views + templates.",
-         "Best for: server-rendered apps, admin-heavy projects.",
-         "Session-based auth via allauth."),
+        (
+            "DRF",
+            "Django REST Framework - the classic choice.",
+            "Mature, large ecosystem, serializer-based.",
+            "JWT auth (simplejwt), browsable API, filtering.",
+        ),
+        (
+            "Django-Ninja",
+            "Modern, type-hint native, Pydantic-based.",
+            "~5x faster request handling than DRF.",
+            "JWT auth, OpenAPI docs, async views.",
+            "recommended for new projects",
+        ),
+        (
+            "Pure Django",
+            "No API framework. Traditional Django views + templates.",
+            "Best for: server-rendered apps, admin-heavy projects.",
+            "Session-based auth via allauth.",
+        ),
     ]
 
     for fw in frameworks:
@@ -50,9 +50,7 @@ def _print_frameworks() -> None:
         console.print(f"  [forge.label]{name}[/]")
 
         if len(fw) > 4 and fw[4]:
-            console.print(
-                f"    [forge.accent]* {fw[4]}[/]"
-            )
+            console.print(f"    [forge.accent]* {fw[4]}[/]")
 
         for line in fw[1:4]:
             if line:
@@ -72,6 +70,11 @@ def _print_optional_layers() -> None:
         ("Caching", "Redis cache backend (django.core.cache.backends.redis)"),
         ("Social Auth", "Google + GitHub OAuth via django-allauth"),
         ("S3 Storage", "django-storages[s3] — static + media files on S3/MinIO"),
+        ("Health Check", "django-health-check — /healthz for load balancers"),
+        ("Audit Trail", "django-simple-history — record every model change"),
+        ("Backup", "django-dbbackup — nightly DB dumps + restore drill"),
+        ("Seed Data", "factory-boy dev data + manage.py seed command"),
+        ("Preflight", "manage.py preflight — deploy check before pushing"),
     ]
 
     for name, desc in layers:

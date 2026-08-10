@@ -1,4 +1,4 @@
-.PHONY: lint typecheck test check run migrate makemigrations
+.PHONY: lint typecheck test check run migrate makemigrations seed preflight backup restore
 
 lint:
 	uv run ruff check .
@@ -20,3 +20,18 @@ migrate:
 
 makemigrations:
 	uv run manage.py makemigrations
+{% if has_seed %}
+seed:
+	uv run manage.py seed
+{% endif %}
+{% if has_preflight %}
+preflight:
+	uv run manage.py preflight
+{% endif %}
+{% if has_backup %}
+backup:
+	uv run manage.py dbbackup
+
+restore:
+	uv run manage.py dbrestore
+{% endif %}
