@@ -30,24 +30,15 @@ COMBOS = [
 
 @pytest.mark.parametrize("name,fw_input,db_input,api,db", COMBOS)
 @patch(_PATCH_PATH, return_value=True)
-def test_framework_db_combo(
-    _mock_install, name, fw_input, db_input, api, db, tmp_path
-) -> None:
+def test_framework_db_combo(_mock_install, name, fw_input, db_input, api, db, tmp_path) -> None:
     """2.1.K - forge start works with each framework+db combo."""
     os.chdir(tmp_path)
     input_str = f"{fw_input}\n{db_input}\n0\nY\n"
-    result = runner.invoke(
-        app, ["start", f"test_{name}"], input=input_str
-    )
-    assert result.exit_code == 0, (
-        f"Failed for {name} (fw={api}, db={db}): "
-        f"{result.exception}"
-    )
+    result = runner.invoke(app, ["start", f"test_{name}"], input=input_str)
+    assert result.exit_code == 0, f"Failed for {name} (fw={api}, db={db}): {result.exception}"
     project_dir = tmp_path / f"test_{name}"
     assert (project_dir / "manage.py").exists()
-    assert (
-        project_dir / "apps" / "accounts" / "models.py"
-    ).exists()
+    assert (project_dir / "apps" / "accounts" / "models.py").exists()
 
 
 @pytest.mark.parametrize("name,fw_input,db_input,api,db", COMBOS)
@@ -60,9 +51,7 @@ def test_framework_db_pyproject_has_correct_deps(
     os.chdir(tmp_path)
     input_str = f"{fw_input}\n{db_input}\n0\nY\n"
     runner.invoke(app, ["start", f"test_{name}"], input=input_str)
-    toml = (
-        tmp_path / f"test_{name}" / "pyproject.toml"
-    ).read_text()
+    toml = (tmp_path / f"test_{name}" / "pyproject.toml").read_text()
 
     if api == "drf":
         assert "djangorestframework" in toml
@@ -84,13 +73,7 @@ def test_framework_db_settings_has_correct_config(
     os.chdir(tmp_path)
     input_str = f"{fw_input}\n{db_input}\n0\nY\n"
     runner.invoke(app, ["start", f"test_{name}"], input=input_str)
-    base_py = (
-        tmp_path
-        / f"test_{name}"
-        / "config"
-        / "settings"
-        / "base.py"
-    ).read_text()
+    base_py = (tmp_path / f"test_{name}" / "config" / "settings" / "base.py").read_text()
 
     if api == "drf":
         assert '"rest_framework"' in base_py

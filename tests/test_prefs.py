@@ -2,8 +2,11 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from django_forge.cli.prefs import _prefs_file, load_prefs, save_prefs
 
@@ -18,6 +21,7 @@ class TestPrefsFile:
         assert result == Path("/home/testuser/.config/forge/prefs.json")
 
     @patch.dict(os.environ, {}, clear=True)
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows path semantics")
     def test_windows_path(self, monkeypatch) -> None:
         monkeypatch.setattr(Path, "home", lambda: Path(r"C:\Users\testuser"))
         result = _prefs_file()

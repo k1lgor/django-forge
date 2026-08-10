@@ -7,6 +7,7 @@ Covers:
 """
 
 import os
+import re
 from unittest.mock import patch
 
 import pytest
@@ -30,9 +31,7 @@ FW_DB_COMBOS = [
 
 @pytest.mark.parametrize("api,db,fw_in,db_in", FW_DB_COMBOS)
 @patch(_PATCH_PATH, return_value=True)
-def test_all_24_combos_render(
-    _mock_install, api, db, fw_in, db_in, tmp_path
-) -> None:
+def test_all_24_combos_render(_mock_install, api, db, fw_in, db_in, tmp_path) -> None:
     """4.2.L — 24 combos (6 fw+db x 2 Celery x 2 Email) render without error."""
     for use_celery in (False, True):
         for use_email in (False, True):
@@ -43,41 +42,27 @@ def test_all_24_combos_render(
                 layer_parts.append("3")
             layer_input = ",".join(layer_parts) if layer_parts else "0"
             project_name = (
-                f"t_{api}_{db}"
-                f"{'_cel' if use_celery else ''}"
-                f"{'_eml' if use_email else ''}"
+                f"t_{api}_{db}{'_cel' if use_celery else ''}{'_eml' if use_email else ''}"
             )
             os.chdir(tmp_path)
             input_str = f"{fw_in}\n{db_in}\n{layer_input}\nY\n"
-            result = runner.invoke(
-                app, ["start", project_name], input=input_str
-            )
-            assert result.exit_code == 0, (
-                f"Failed for {project_name}: {result.exception}"
-            )
+            result = runner.invoke(app, ["start", project_name], input=input_str)
+            assert result.exit_code == 0, f"Failed for {project_name}: {result.exception}"
             project = tmp_path / project_name
             pyproject = (project / "pyproject.toml").read_text()
             if use_celery:
-                assert "celery~=5.4.0" in pyproject, (
-                    f"Missing celery dep for {project_name}"
-                )
+                assert "celery~=5.4.0" in pyproject, f"Missing celery dep for {project_name}"
             else:
-                assert "celery~=5.4.0" not in pyproject, (
-                    f"Unexpected celery dep for {project_name}"
-                )
+                assert "celery~=5.4.0" not in pyproject, f"Unexpected celery dep for {project_name}"
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_no_input_refuses_existing_dir(
-    _mock_install, tmp_path
-) -> None:
+def test_no_input_refuses_existing_dir(_mock_install, tmp_path) -> None:
     """--no-input must refuse to overwrite an existing directory."""
     os.chdir(tmp_path)
     (tmp_path / "mydir").mkdir()
     (tmp_path / "mydir" / "old.txt").write_text("old")
-    result = runner.invoke(
-        app, ["start", "mydir", "--no-input"]
-    )
+    result = runner.invoke(app, ["start", "mydir", "--no-input"])
     assert result.exit_code == 0
     assert "Refusing" in result.stdout
     assert not (tmp_path / "mydir" / "manage.py").exists()
@@ -95,4 +80,6 @@ def test_forge_start_help_shows_no_input() -> None:
     """5.1.K — forge start --help shows --no-input flag."""
     result = runner.invoke(app, ["start", "--help"])
     assert result.exit_code == 0
-    assert "--no-input" in result.stdout
+    # strip ANSI: colored help can split option names with escape codes
+    stdout = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--no-input" in stdout

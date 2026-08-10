@@ -21,19 +21,17 @@ _PATCH_PATH = "django_forge.cli.start.run_post_install"
 def _make_forge_toml(path: Path, layers: list[str]) -> None:
     layers_str = ", ".join(f'"{layer}"' for layer in layers)
     toml = (
-        f'[forge]\n'
+        f"[forge]\n"
         f'version = "{_forge_version}"\n'
         f'api = "pure"\n'
         f'db = "sqlite"\n'
-        f'layers = [{layers_str}]\n'
+        f"layers = [{layers_str}]\n"
     )
     (path / ".forge.toml").write_text(toml)
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_upgrade_no_config_dir(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_upgrade_no_config_dir(_mock_install, tmp_path: Path) -> None:
     """Upgrade on project with no config/ dir still works."""
     _make_forge_toml(tmp_path, [])
     (tmp_path / "manage.py").write_text("# old")
@@ -43,17 +41,13 @@ def test_upgrade_no_config_dir(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_upgrade_all_layers(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_upgrade_all_layers(_mock_install, tmp_path: Path) -> None:
     """Upgrade on project with all 3 layers already."""
     _make_forge_toml(tmp_path, ["docker", "celery", "email"])
     (tmp_path / "manage.py").write_text("# old")
     (tmp_path / "config" / "settings").mkdir(parents=True, exist_ok=True)
     (tmp_path / "config" / "__init__.py").write_text("# config")
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# base"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# base")
     os.chdir(tmp_path)
     result = runner.invoke(app, ["upgrade"], input="Y\n")
     assert result.exit_code == 0, str(result.exception)
@@ -81,9 +75,7 @@ def test_upgrade_missing_toml(tmp_path: Path) -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_docker_still_works(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_add_docker_still_works(_mock_install, tmp_path: Path) -> None:
     """forge add docker still works after template changes."""
     _make_forge_toml(tmp_path, [])
     os.chdir(tmp_path)
@@ -93,9 +85,7 @@ def test_add_docker_still_works(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_celery_still_works(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_add_celery_still_works(_mock_install, tmp_path: Path) -> None:
     """forge add celery still works."""
     _make_forge_toml(tmp_path, [])
     (tmp_path / "manage.py").write_text("# m")
@@ -129,14 +119,10 @@ def test_forge_list_still_works() -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_generated_project_has_debug_toolbar_in_settings(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_generated_project_has_debug_toolbar_in_settings(_mock_install, tmp_path: Path) -> None:
     """Generated project dev.py has debug_toolbar config."""
     os.chdir(tmp_path)
-    r1 = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    r1 = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert r1.exit_code == 0, str(r1.exception)
     project = tmp_path / "testproj"
     dev = (project / "config" / "settings" / "dev.py").read_text()
@@ -145,14 +131,10 @@ def test_generated_project_has_debug_toolbar_in_settings(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_generated_project_has_debug_toolbar_in_urls(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_generated_project_has_debug_toolbar_in_urls(_mock_install, tmp_path: Path) -> None:
     """Generated project urls.py has debug toolbar URL."""
     os.chdir(tmp_path)
-    r1 = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    r1 = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert r1.exit_code == 0, str(r1.exception)
     project = tmp_path / "testproj"
     urls = (project / "config" / "urls.py").read_text()

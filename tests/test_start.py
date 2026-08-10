@@ -16,9 +16,9 @@ _PATCH_PATH = "django_forge.cli.start.run_post_install"
 # Q1 (framework): enter = default (Pure Django)
 # Q2 (database):  enter = default (SQLite only)
 # Confirm:        Y = yes, N = no
-_DEFAULT_INPUT = "\n\n0\nY\n"    # defaults + no layers + confirm
-_DEFAULT_ABORT = "\n\n0\nN\n"    # defaults + no layers + abort
-_OVERWRITE_OK = "Y\n\n\n0\nY\n" # overwrite + defaults + no layers + confirm
+_DEFAULT_INPUT = "\n\n0\nY\n"  # defaults + no layers + confirm
+_DEFAULT_ABORT = "\n\n0\nN\n"  # defaults + no layers + abort
+_OVERWRITE_OK = "Y\n\n\n0\nY\n"  # overwrite + defaults + no layers + confirm
 
 
 # ---------------------------------------------------------------------------
@@ -27,33 +27,23 @@ _OVERWRITE_OK = "Y\n\n\n0\nY\n" # overwrite + defaults + no layers + confirm
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_creates_project_files(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_creates_project_files(_mock_install, tmp_path: Path) -> None:
     """1.3.B — Confirming creates project files."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "myproject"], input=_DEFAULT_INPUT
-    )
+    result = runner.invoke(app, ["start", "myproject"], input=_DEFAULT_INPUT)
     assert result.exit_code == 0
     project_dir = tmp_path / "myproject"
     assert project_dir.exists()
     assert (project_dir / "manage.py").exists()
     assert (project_dir / "pyproject.toml").exists()
-    assert (
-        project_dir / "config" / "settings" / "base.py"
-    ).exists()
+    assert (project_dir / "config" / "settings" / "base.py").exists()
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_enter_confirms_default(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_enter_confirms_default(_mock_install, tmp_path: Path) -> None:
     """Pressing Enter accepts all defaults."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "myproject"], input="\n\n0\n\n"
-    )
+    result = runner.invoke(app, ["start", "myproject"], input="\n\n0\n\n")
     assert result.exit_code == 0
     assert (tmp_path / "myproject" / "manage.py").exists()
 
@@ -64,14 +54,10 @@ def test_start_enter_confirms_default(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_abort_on_n(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_abort_on_n(_mock_install, tmp_path: Path) -> None:
     """1.3.K — Pressing N aborts with no files written."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "myproject"], input=_DEFAULT_ABORT
-    )
+    result = runner.invoke(app, ["start", "myproject"], input=_DEFAULT_ABORT)
     assert result.exit_code == 0
     assert "Aborted" in result.stdout
     assert not (tmp_path / "myproject").exists()
@@ -83,40 +69,28 @@ def test_start_abort_on_n(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_existing_directory_n(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_existing_directory_n(_mock_install, tmp_path: Path) -> None:
     """1.3.G — When directory exists and user says N, abort."""
     os.chdir(tmp_path)
     (tmp_path / "existing").mkdir()
-    result = runner.invoke(
-        app, ["start", "existing"], input="N\n"
-    )
+    result = runner.invoke(app, ["start", "existing"], input="N\n")
     assert result.exit_code == 0
     assert "Aborted" in result.stdout
     assert (tmp_path / "existing").exists()
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_existing_directory_y(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_existing_directory_y(_mock_install, tmp_path: Path) -> None:
     """1.3.G — When directory exists and user says Y, overwrite."""
     os.chdir(tmp_path)
     (tmp_path / "overwrite_me").mkdir()
     (tmp_path / "overwrite_me" / "old_file.txt").write_text("old")
 
-    result = runner.invoke(
-        app, ["start", "overwrite_me"], input=_OVERWRITE_OK
-    )
+    result = runner.invoke(app, ["start", "overwrite_me"], input=_OVERWRITE_OK)
     assert result.exit_code == 0
     assert (tmp_path / "overwrite_me").exists()
-    assert not (
-        tmp_path / "overwrite_me" / "old_file.txt"
-    ).exists()
-    assert (
-        tmp_path / "overwrite_me" / "manage.py"
-    ).exists()
+    assert not (tmp_path / "overwrite_me" / "old_file.txt").exists()
+    assert (tmp_path / "overwrite_me" / "manage.py").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -125,14 +99,10 @@ def test_start_existing_directory_y(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_start_shows_project_name(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_shows_project_name(_mock_install, tmp_path: Path) -> None:
     """Banner shows the project name."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "my-cool-project"], input=_DEFAULT_ABORT
-    )
+    result = runner.invoke(app, ["start", "my-cool-project"], input=_DEFAULT_ABORT)
     assert "my-cool-project" in result.stdout
 
 
@@ -142,14 +112,10 @@ def test_start_shows_project_name(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_generated_files_match_expected(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_generated_files_match_expected(_mock_install, tmp_path: Path) -> None:
     """Generated project has all expected files."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj"], input=_DEFAULT_INPUT
-    )
+    result = runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
     assert result.exit_code == 0
 
     expected = [
@@ -180,19 +146,11 @@ def test_generated_files_match_expected(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_secret_key_in_context(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_secret_key_in_context(_mock_install, tmp_path: Path) -> None:
     """1.3.L — Secret key is generated and included in rendered files."""
     os.chdir(tmp_path)
     runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
-    base_py = (
-        tmp_path
-        / "testproj"
-        / "config"
-        / "settings"
-        / "base.py"
-    ).read_text()
+    base_py = (tmp_path / "testproj" / "config" / "settings" / "base.py").read_text()
     assert "django-insecure-" in base_py
 
 
@@ -213,14 +171,10 @@ def test_extra_positional_arg_errors() -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_success_banner_shown(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_success_banner_shown(_mock_install, tmp_path: Path) -> None:
     """1.3.F — Success banner prints when install succeeds."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj"], input=_DEFAULT_INPUT
-    )
+    result = runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
     assert "Next steps" in result.stdout
     assert "Project forged successfully" in result.stdout
 
@@ -231,14 +185,10 @@ def test_success_banner_shown(
 
 
 @patch(_PATCH_PATH, return_value=False)
-def test_install_failure_message(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_install_failure_message(_mock_install, tmp_path: Path) -> None:
     """When installer fails, no success banner."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj"], input=_DEFAULT_INPUT
-    )
+    result = runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
     assert "Project forged successfully" not in result.stdout
 
 
@@ -248,14 +198,10 @@ def test_install_failure_message(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_output_uses_rich_styling(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_output_uses_rich_styling(_mock_install, tmp_path: Path) -> None:
     """1.3.O — Output includes forge style markers."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "styled"], input=_DEFAULT_INPUT
-    )
+    result = runner.invoke(app, ["start", "styled"], input=_DEFAULT_INPUT)
     assert "FORGE" in result.stdout.upper()
 
 
@@ -300,11 +246,10 @@ def test_createsuperuser_not_called_in_no_input_mode(
 
 @patch("subprocess.run")
 @patch("sys.stdin.isatty", return_value=True)
-def test_createsuperuser_accept_runs_command(
-    mock_tty, mock_run, tmp_path: Path
-) -> None:
+def test_createsuperuser_accept_runs_command(_mock_tty, mock_run, tmp_path: Path) -> None:
     """Accepting the prompt runs uv run manage.py createsuperuser."""
     from django_forge.cli.start import _prompt_createsuperuser
+
     project = tmp_path / "myproject"
     project.mkdir()
     with patch("builtins.input", return_value="y"):
@@ -316,11 +261,10 @@ def test_createsuperuser_accept_runs_command(
 
 
 @patch("sys.stdin.isatty", return_value=True)
-def test_createsuperuser_decline_shows_skip_message(
-    mock_tty, tmp_path: Path
-) -> None:
+def test_createsuperuser_decline_shows_skip_message(_mock_tty, tmp_path: Path) -> None:
     """Declining shows skip message with manual instructions."""
     from django_forge.cli.start import _prompt_createsuperuser
+
     project = tmp_path / "myproject"
     project.mkdir()
     with patch("builtins.input", return_value="n"):
@@ -328,11 +272,10 @@ def test_createsuperuser_decline_shows_skip_message(
 
 
 @patch("sys.stdin.isatty", return_value=False)
-def test_createsuperuser_skips_in_non_tty(
-    mock_tty, tmp_path: Path
-) -> None:
+def test_createsuperuser_skips_in_non_tty(_mock_tty, tmp_path: Path) -> None:
     """Non-TTY environments (CI, piped input) skip the prompt."""
     from django_forge.cli.start import _prompt_createsuperuser
+
     project = tmp_path / "myproject"
     project.mkdir()
     with patch("subprocess.run") as mock_run:

@@ -1,11 +1,19 @@
 """Tests for the forge CLI entry point."""
 
+import re
+
 from typer.testing import CliRunner
 
 from django_forge import __version__
 from django_forge.cli.main import app
 
 runner = CliRunner()
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI escapes so colored help (e.g. under GITHUB_ACTIONS)
+    doesn't split option names like ``--no-input`` with escape codes."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
 def test_version() -> None:
@@ -29,8 +37,9 @@ def test_start_help_shows_usage() -> None:
     """Running `forge start --help` shows PROJECT_NAME and --no-input."""
     result = runner.invoke(app, ["start", "--help"])
     assert result.exit_code == 0
-    assert "PROJECT_NAME" in result.stdout
-    assert "--no-input" in result.stdout
+    stdout = _plain(result.stdout)
+    assert "PROJECT_NAME" in stdout
+    assert "--no-input" in stdout
 
 
 def test_start_command_accepts_project_name() -> None:

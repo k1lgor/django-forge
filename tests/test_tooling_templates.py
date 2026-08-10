@@ -5,9 +5,7 @@ from pathlib import Path
 
 from django_forge.renderer import Renderer
 
-PROJECT_TEMPLATES = (
-    Path(__file__).resolve().parent.parent / "django_forge" / "templates"
-)
+PROJECT_TEMPLATES = Path(__file__).resolve().parent.parent / "django_forge" / "templates"
 
 MINIMAL_CONTEXT = {
     "project_name": "testproj",
@@ -36,9 +34,7 @@ def test_ci_workflow_has_all_jobs() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         renderer.render_project(MINIMAL_CONTEXT, target)
-        content = (
-            target / ".github" / "workflows" / "ci.yml"
-        ).read_text()
+        content = (target / ".github" / "workflows" / "ci.yml").read_text()
         assert "lint:" in content
         assert "typecheck:" in content
         assert "test:" in content
@@ -54,9 +50,7 @@ def test_ci_workflow_uses_astral_setup_uv() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         renderer.render_project(MINIMAL_CONTEXT, target)
-        content = (
-            target / ".github" / "workflows" / "ci.yml"
-        ).read_text()
+        content = (target / ".github" / "workflows" / "ci.yml").read_text()
         assert "astral-sh/setup-uv@v5" in content
 
 
@@ -66,9 +60,7 @@ def test_ci_workflow_python_version() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         renderer.render_project(MINIMAL_CONTEXT, target)
-        content = (
-            target / ".github" / "workflows" / "ci.yml"
-        ).read_text()
+        content = (target / ".github" / "workflows" / "ci.yml").read_text()
         assert 'python-version: "3.12"' in content
 
 
@@ -94,9 +86,7 @@ def test_makefile_has_all_targets() -> None:
             "makemigrations",
         ]
         for t in required_targets:
-            assert f"{t}:" in content, (
-                f"Makefile missing target: {t}"
-            )
+            assert f"{t}:" in content, f"Makefile missing target: {t}"
 
 
 def test_makefile_check_depends_on_all() -> None:
@@ -183,9 +173,7 @@ def test_example_has_django_db_marker() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         renderer.render_project(MINIMAL_CONTEXT, target)
-        content = (
-            target / "tests" / "test_example.py"
-        ).read_text()
+        content = (target / "tests" / "test_example.py").read_text()
         assert "pytest.mark.django_db" in content
         assert "django.conf import settings" in content
 
@@ -197,7 +185,10 @@ def test_example_has_django_db_marker() -> None:
 
 def test_pyproject_toml_all_options_toml_valid() -> None:
     """pyproject.toml renders valid TOML even with all options enabled."""
-    import tomllib as _toml
+    try:
+        import tomllib as _toml
+    except ImportError:
+        import tomli as _toml  # type: ignore[no-redef]  # Python 3.10
 
     renderer = Renderer(PROJECT_TEMPLATES)
     ctx = dict(MINIMAL_CONTEXT)
@@ -233,7 +224,5 @@ def test_pytest_config_has_correct_settings_module() -> None:
         toml_content = (target / "pyproject.toml").read_text()
         assert "config.settings.base" in toml_content
         # Check conftest.py
-        conftest_content = (
-            target / "tests" / "conftest.py"
-        ).read_text()
+        conftest_content = (target / "tests" / "conftest.py").read_text()
         assert "config.settings.base" in conftest_content

@@ -14,3 +14,15 @@ def _isolate_prefs(tmp_path: Path) -> None:
     and ensures every test starts with a clean slate.
     """
     os.environ["FORGE_PREFS_DIR"] = str(tmp_path / "forge_prefs")
+
+
+@pytest.fixture(autouse=True)
+def _no_ci_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Strip CI environment markers so ``forge start`` stays interactive.
+
+    GitHub Actions sets ``CI``/``GITHUB_ACTIONS``, which auto-activates
+    forge's no-input mode and silently ignores the wizard answers the
+    tests pipe in. Tests that exercise CI detection set these explicitly.
+    """
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)

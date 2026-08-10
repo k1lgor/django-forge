@@ -33,13 +33,7 @@ def _make_forge_toml(
     """Write a .forge.toml with given config."""
     api, db, layers = config
     layers_str = ", ".join(f'"{layer}"' for layer in layers)
-    toml = (
-        f'[forge]\n'
-        f'version = "0.1.0"\n'
-        f'api = "{api}"\n'
-        f'db = "{db}"\n'
-        f'layers = [{layers_str}]\n'
-    )
+    toml = f'[forge]\nversion = "0.1.0"\napi = "{api}"\ndb = "{db}"\nlayers = [{layers_str}]\n'
     (tmp_path / ".forge.toml").write_text(toml)
 
 
@@ -52,6 +46,7 @@ def test_add_detects_project_from_forge_toml(tmp_path: Path) -> None:
     """6.1.A — forge add reads .forge.toml and parses context."""
     _make_forge_toml(tmp_path, ("drf", "postgres", []))
     from django_forge.cli.add import _detect_project
+
     context = _detect_project(tmp_path)
     assert context is not None
     assert context["api"] == "drf"
@@ -108,9 +103,7 @@ def test_add_unknown_layer(tmp_path: Path) -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_docker_creates_files_and_updates_toml(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_add_docker_creates_files_and_updates_toml(_mock_install, tmp_path: Path) -> None:
     """6.1.C+E — forge add docker creates files and updates .forge.toml."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     os.chdir(tmp_path)
@@ -127,6 +120,7 @@ def test_add_docker_creates_files_and_updates_toml(
 
     # .forge.toml should be updated
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "docker" in toml["forge"]["layers"]
 
@@ -137,14 +131,13 @@ def test_add_docker_creates_files_and_updates_toml(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_docker_preserves_existing_layers(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_add_docker_preserves_existing_layers(_mock_install, tmp_path: Path) -> None:
     """6.1.E — .forge.toml preserves existing layers when adding new ones."""
     _make_forge_toml(tmp_path, ("drf", "postgres", ["celery"]))
     os.chdir(tmp_path)
     runner.invoke(app, ["add", "docker"])
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     layers = toml["forge"]["layers"]
     assert "celery" in layers
@@ -197,8 +190,10 @@ def test_update_forge_toml_preserves_api_and_db(tmp_path: Path) -> None:
     """_update_forge_toml preserves api and db values."""
     _make_forge_toml(tmp_path, ("ninja", "postgres", ["docker"]))
     from django_forge.cli.add import _update_forge_toml
+
     _update_forge_toml(tmp_path / ".forge.toml", ["docker", "celery"])
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert toml["forge"]["api"] == "ninja"
     assert toml["forge"]["db"] == "postgres"
@@ -212,9 +207,7 @@ def test_update_forge_toml_preserves_api_and_db(tmp_path: Path) -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_celery_creates_celery_files(
-    _mock_install, tmp_path
-) -> None:
+def test_add_celery_creates_celery_files(_mock_install, tmp_path) -> None:
     """6.2.A — forge add celery creates celery.py and tasks.py."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     # Create a minimal project structure
@@ -222,10 +215,8 @@ def test_add_celery_creates_celery_files(
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "__init__.py").write_text("# config")
     (tmp_path / "config" / "settings").mkdir()
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# django settings"
-    )
-    (tmp_path / "pyproject.toml").write_text("[project]\nname = \"x\"\n")
+    (tmp_path / "config" / "settings" / "base.py").write_text("# django settings")
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
     os.chdir(tmp_path)
 
     # Answer Y to the overwrite prompt
@@ -236,28 +227,21 @@ def test_add_celery_creates_celery_files(
 
     # .forge.toml should be updated
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "celery" in toml["forge"]["layers"]
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_email_creates_env_vars(
-    _mock_install, tmp_path
-) -> None:
+def test_add_email_creates_env_vars(_mock_install, tmp_path) -> None:
     """6.2.F-I — forge add email adds email vars to .env.example."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     (tmp_path / "manage.py").write_text("# manage")
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "settings").mkdir()
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# django settings"
-    )
-    (tmp_path / "config" / "settings" / "dev.py").write_text(
-        "# dev settings"
-    )
-    (tmp_path / "config" / "settings" / "prod.py").write_text(
-        "# prod settings"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# django settings")
+    (tmp_path / "config" / "settings" / "dev.py").write_text("# dev settings")
+    (tmp_path / "config" / "settings" / "prod.py").write_text("# prod settings")
     (tmp_path / ".env.example").write_text("# env")
     os.chdir(tmp_path)
 
@@ -269,23 +253,20 @@ def test_add_email_creates_env_vars(
     assert "EMAIL_HOST" in env_content
 
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "email" in toml["forge"]["layers"]
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_celery_after_docker_updates_compose(
-    _mock_install, tmp_path
-) -> None:
+def test_add_celery_after_docker_updates_compose(_mock_install, tmp_path) -> None:
     """6.2.K — Celery after Docker re-renders compose with redis."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", ["docker"]))
     (tmp_path / "manage.py").write_text("# manage")
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "__init__.py").write_text("# config")
     (tmp_path / "config" / "settings").mkdir()
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# django settings"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# django settings")
     (tmp_path / "pyproject.toml").write_text("[project]\n")
     (tmp_path / "compose.yaml").write_text("services:\n  app:\n")
     os.chdir(tmp_path)
@@ -298,46 +279,39 @@ def test_add_celery_after_docker_updates_compose(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_email_declined_no_files_changed(
-    _mock_install, tmp_path
-) -> None:
+def test_add_email_declined_no_files_changed(_mock_install, tmp_path) -> None:
     """6.2.B — Declining overwrite leaves files unchanged."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     (tmp_path / "manage.py").write_text("# manage")
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "settings").mkdir()
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# ORIGINAL base"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# ORIGINAL base")
     (tmp_path / ".env.example").write_text("# ORIGINAL env")
     os.chdir(tmp_path)
 
     # Input N = don't overwrite
     result = runner.invoke(app, ["add", "email"], input="N\n")
     assert result.exit_code == 0
-    assert (
-        tmp_path / ".env.example"
-    ).read_text() == "# ORIGINAL env", "File should remain unchanged"
+    assert (tmp_path / ".env.example").read_text() == "# ORIGINAL env", (
+        "File should remain unchanged"
+    )
 
     # .forge.toml should NOT be updated
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "email" not in toml["forge"]["layers"]
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_celery_then_docker_order_independence(
-    _mock_install, tmp_path
-) -> None:
+def test_add_celery_then_docker_order_independence(_mock_install, tmp_path) -> None:
     """6.2.M — Celery then Docker works (order independence)."""
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     (tmp_path / "manage.py").write_text("# manage")
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "__init__.py").write_text("# config")
     (tmp_path / "config" / "settings").mkdir()
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# django settings"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# django settings")
     (tmp_path / "pyproject.toml").write_text("[project]\n")
     os.chdir(tmp_path)
 
@@ -352,6 +326,7 @@ def test_add_celery_then_docker_order_independence(
     assert (tmp_path / "Dockerfile").exists()
 
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "celery" in toml["forge"]["layers"]
     assert "docker" in toml["forge"]["layers"]

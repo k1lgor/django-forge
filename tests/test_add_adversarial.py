@@ -27,11 +27,9 @@ def _minimal_project(tmp_path: Path) -> None:
     (tmp_path / "manage.py").write_text("# manage")
     (tmp_path / "config").mkdir(exist_ok=True)
     (tmp_path / "config" / "settings").mkdir(exist_ok=True)
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# base settings"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# base settings")
     (tmp_path / "config" / "__init__.py").write_text("# config pkg")
-    (tmp_path / "pyproject.toml").write_text("[project]\nname = \"x\"\n")
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +62,7 @@ def test_add_no_layers_key(tmp_path: Path) -> None:
         '[forge]\napi = "drf"\ndb = "postgres"\n',
     )
     from django_forge.cli.add import _detect_project
+
     context = _detect_project(tmp_path)
     assert context is not None
     assert context["layers"] == []
@@ -85,6 +84,7 @@ def test_add_already_installed_with_multiple_layers(tmp_path: Path) -> None:
     assert "already installed" in result.stdout
     # Celery should still be there
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     assert "celery" in toml["forge"]["layers"]
 
@@ -95,16 +95,12 @@ def test_add_already_installed_with_multiple_layers(tmp_path: Path) -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_e2e_start_then_add_docker(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_e2e_start_then_add_docker(_mock_install, tmp_path: Path) -> None:
     """Full flow: forge start (no-input) → forge add docker."""
     os.chdir(tmp_path)
 
     # Step 1: forge start
-    r1 = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    r1 = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert r1.exit_code == 0, str(r1.exception)
     project = tmp_path / "testproj"
 
@@ -120,19 +116,16 @@ def test_e2e_start_then_add_docker(
 
     # .forge.toml should have docker
     import tomli
+
     toml = tomli.loads((project / ".forge.toml").read_text())
     assert "docker" in toml["forge"]["layers"]
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_e2e_start_then_add_celery_then_add_email(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_e2e_start_then_add_celery_then_add_email(_mock_install, tmp_path: Path) -> None:
     """Full flow: start → add celery → add email."""
     os.chdir(tmp_path)
-    r1 = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    r1 = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert r1.exit_code == 0, str(r1.exception)
     project = tmp_path / "testproj"
     os.chdir(project)
@@ -148,6 +141,7 @@ def test_e2e_start_then_add_celery_then_add_email(
 
     # Both in .forge.toml
     import tomli
+
     toml = tomli.loads((project / ".forge.toml").read_text())
     assert "celery" in toml["forge"]["layers"]
     assert "email" in toml["forge"]["layers"]
@@ -165,6 +159,7 @@ def test_build_add_context_unknown_api(tmp_path: Path) -> None:
         '[forge]\napi = "unknown"\ndb = "sqlite"\nlayers = []\n',
     )
     from django_forge.cli.add import _build_add_context, _detect_project
+
     context = _detect_project(tmp_path)
     assert context is not None
     result = _build_add_context(context, "docker")
@@ -177,6 +172,7 @@ def test_build_add_context_unknown_api(tmp_path: Path) -> None:
 def test_build_add_context_duplicate_layers() -> None:
     """Duplicate layers in input don't create duplicates in output."""
     from django_forge.cli.add import _build_add_context
+
     context = _build_add_context(
         {"api": "drf", "db": "postgres", "layers": ["docker", "docker"]},
         "celery",
@@ -199,8 +195,10 @@ def test_update_forge_toml_preserves_extra_sections(tmp_path: Path) -> None:
         '[forge]\napi = "drf"\ndb = "postgres"\nlayers = []\n\n[database]\nurl = "sqlite:///dev.db"\n',
     )
     from django_forge.cli.add import _update_forge_toml
+
     _update_forge_toml(tmp_path / ".forge.toml", ["docker"])
     import tomli
+
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
     # [database] section should be present (but manual TOML serialization
     # currently drops it — this is a known limitation)
@@ -226,9 +224,7 @@ def test_add_help_shows_usage() -> None:
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_add_celery_without_config_dir_is_ok(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_add_celery_without_config_dir_is_ok(_mock_install, tmp_path: Path) -> None:
     """Adding celery to minimal project without config/ dir works."""
     _write_forge_toml(
         tmp_path / ".forge.toml",

@@ -80,9 +80,7 @@ def test_check_uv_installed_not_found(_mock_which) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_handle_existing_aborts_on_invalid_input(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_handle_existing_aborts_on_invalid_input(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "mydir").mkdir()
     monkeypatch.setattr("builtins.input", lambda _: "invalid\n")
     result = _handle_existing_directory(tmp_path / "mydir")
@@ -96,37 +94,25 @@ def test_handle_existing_aborts_on_invalid_input(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_project_name_with_dots(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_project_name_with_dots(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "my.project"], input=_DEFAULT_OK
-    )
+    result = runner.invoke(app, ["start", "my.project"], input=_DEFAULT_OK)
     assert result.exit_code == 0
     assert (tmp_path / "my.project" / "manage.py").exists()
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_project_name_with_underscores(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_project_name_with_underscores(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "my_project"], input=_DEFAULT_OK
-    )
+    result = runner.invoke(app, ["start", "my_project"], input=_DEFAULT_OK)
     assert result.exit_code == 0
     assert (tmp_path / "my_project" / "manage.py").exists()
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_project_name_starts_with_number(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_project_name_starts_with_number(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "42project"], input=_DEFAULT_OK
-    )
+    result = runner.invoke(app, ["start", "42project"], input=_DEFAULT_OK)
     assert result.exit_code == 0
     assert (tmp_path / "42project" / "manage.py").exists()
 
@@ -137,17 +123,13 @@ def test_start_project_name_starts_with_number(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_twice_in_same_dir_overwrite(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_twice_in_same_dir_overwrite(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
     r1 = runner.invoke(app, ["start", "myapp"], input=_DEFAULT_OK)
     assert r1.exit_code == 0
     assert (tmp_path / "myapp" / "manage.py").exists()
 
-    r2 = runner.invoke(
-        app, ["start", "myapp"], input="Y\n3\n2\n0\nY\n"
-    )
+    r2 = runner.invoke(app, ["start", "myapp"], input="Y\n3\n2\n0\nY\n")
     assert r2.exit_code == 0
     assert (tmp_path / "myapp" / "manage.py").exists()
 
@@ -158,55 +140,37 @@ def test_start_twice_in_same_dir_overwrite(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_no_input_scaffolds_without_prompts(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_no_input_scaffolds_without_prompts(_mock_install, tmp_path: Path) -> None:
     """5.1.D - --no-input skips all prompts and generates project."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    result = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert result.exit_code == 0
     assert (tmp_path / "testproj" / "manage.py").exists()
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_no_input_shows_default_banner(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_no_input_shows_default_banner(_mock_install, tmp_path: Path) -> None:
     """5.1.D - --no-input prints the using-defaults message."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    result = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert "Using defaults" in result.stdout
     assert "--no-input mode" in result.stdout
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_no_input_uses_drf_defaults(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_no_input_uses_drf_defaults(_mock_install, tmp_path: Path) -> None:
     """5.1.E - --no-input uses DRF + PostgreSQL defaults."""
     os.chdir(tmp_path)
-    runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
-    pyproject = (
-        tmp_path / "testproj" / "pyproject.toml"
-    ).read_text()
+    runner.invoke(app, ["start", "testproj", "--no-input"])
+    pyproject = (tmp_path / "testproj" / "pyproject.toml").read_text()
     assert "djangorestframework" in pyproject
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_no_input_skips_confirm_prompt(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_no_input_skips_confirm_prompt(_mock_install, tmp_path: Path) -> None:
     """5.1.F - --no-input skips the Looks good? confirmation."""
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    result = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert "Looks good?" not in result.stdout
 
 
@@ -216,9 +180,7 @@ def test_no_input_skips_confirm_prompt(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_ci_env_activates_no_input(
-    _mock_install, monkeypatch, tmp_path
-) -> None:
+def test_ci_env_activates_no_input(_mock_install, monkeypatch, tmp_path) -> None:
     """5.1.G - CI=true activates no-input without --no-input flag."""
     monkeypatch.setenv("CI", "true")
     os.chdir(tmp_path)
@@ -229,9 +191,7 @@ def test_ci_env_activates_no_input(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_github_actions_env_activates_no_input(
-    _mock_install, monkeypatch, tmp_path
-) -> None:
+def test_github_actions_env_activates_no_input(_mock_install, monkeypatch, tmp_path) -> None:
     """5.1.H - GITHUB_ACTIONS=true activates no-input."""
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     os.chdir(tmp_path)
@@ -281,13 +241,9 @@ def test_start_rejects_empty_name() -> None:
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_confirm_with_y(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_confirm_with_y(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj"], input="3\n2\n0\ny\n"
-    )
+    result = runner.invoke(app, ["start", "testproj"], input="3\n2\n0\ny\n")
     assert result.exit_code == 0
     assert (tmp_path / "testproj" / "manage.py").exists()
 
@@ -298,13 +254,9 @@ def test_start_confirm_with_y(
 
 
 @patch(_PATCH_INSTALL, return_value=True)
-def test_start_abort_with_n_at_confirm(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_start_abort_with_n_at_confirm(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["start", "testproj"], input="3\n2\n0\nN\n"
-    )
+    result = runner.invoke(app, ["start", "testproj"], input="3\n2\n0\nN\n")
     assert result.exit_code == 0
     assert "Aborted" in result.stdout
     assert not (tmp_path / "testproj").exists()

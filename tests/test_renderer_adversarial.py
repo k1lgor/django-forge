@@ -8,9 +8,7 @@ import pytest
 
 from django_forge.renderer import Renderer
 
-PROJECT_TEMPLATES = (
-    Path(__file__).resolve().parent.parent / "django_forge" / "templates"
-)
+PROJECT_TEMPLATES = Path(__file__).resolve().parent.parent / "django_forge" / "templates"
 
 MINIMAL_CONTEXT = {
     "project_name": "myproject",
@@ -41,9 +39,10 @@ def test_render_with_empty_context_raises_error() -> None:
         with pytest.raises(Exception) as excinfo:
             renderer.render_project({}, target)
         # The error should mention an undefined variable
-        assert "undefined" in str(excinfo.value).lower() or "undefined" in type(
-            excinfo.value
-        ).__name__.lower()
+        assert (
+            "undefined" in str(excinfo.value).lower()
+            or "undefined" in type(excinfo.value).__name__.lower()
+        )
 
 
 def test_render_with_extra_context_keys() -> None:

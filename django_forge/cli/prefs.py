@@ -9,6 +9,7 @@ Override via ``FORGE_PREFS_DIR`` env var.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -58,10 +59,9 @@ def save_prefs(*, api: str, db: str, layers: list[str]) -> None:
         "db": db,
         "layers": list(layers),
     }
-    try:
+    with contextlib.suppress(OSError):
+        # disk full, permissions, etc.
         prefs_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except OSError:
-        pass  # disk full, permissions, etc.
 
 
 def load_prefs() -> dict[str, Any]:
@@ -92,10 +92,10 @@ def load_prefs() -> dict[str, Any]:
         result["db"] = data["db"]
     if isinstance(data.get("layers"), list):
         valid = [
-            l
-            for l in data["layers"]
-            if isinstance(l, str)
-            and l in ("docker", "celery", "email", "cache", "social", "storage")
+            layer
+            for layer in data["layers"]
+            if isinstance(layer, str)
+            and layer in ("docker", "celery", "email", "cache", "social", "storage")
         ]
         result["layers"] = valid
 

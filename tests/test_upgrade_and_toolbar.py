@@ -99,27 +99,23 @@ def _write_forge_toml(path: Path, layers: list[str]) -> None:
     """Write a minimal .forge.toml in the given directory."""
     layers_str = ", ".join(f'"{layer}"' for layer in layers)
     toml = (
-        f'[forge]\n'
+        f"[forge]\n"
         f'version = "{_forge_version}"\n'
         f'api = "pure"\n'
         f'db = "sqlite"\n'
-        f'layers = [{layers_str}]\n'
+        f"layers = [{layers_str}]\n"
     )
     (path / ".forge.toml").write_text(toml)
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_upgrade_with_forge_project(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_upgrade_with_forge_project(_mock_install, tmp_path: Path) -> None:
     """forge upgrade on a forge project re-renders templates."""
     _write_forge_toml(tmp_path, [])
     (tmp_path / "manage.py").write_text("# old manage.py content")
     (tmp_path / "config" / "settings").mkdir(parents=True, exist_ok=True)
     (tmp_path / "config" / "__init__.py").write_text("# old")
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# old base"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# old base")
     os.chdir(tmp_path)
 
     result = runner.invoke(app, ["upgrade"], input="Y\n")
@@ -128,38 +124,28 @@ def test_upgrade_with_forge_project(
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_upgrade_declined_leaves_files(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_upgrade_declined_leaves_files(_mock_install, tmp_path: Path) -> None:
     """forge upgrade declined leaves files unchanged."""
     _write_forge_toml(tmp_path, [])
     (tmp_path / "manage.py").write_text("# OLD")
     (tmp_path / "config" / "settings").mkdir(parents=True, exist_ok=True)
     (tmp_path / "config" / "__init__.py").write_text("# OLD")
-    (tmp_path / "config" / "settings" / "base.py").write_text(
-        "# OLD base"
-    )
+    (tmp_path / "config" / "settings" / "base.py").write_text("# OLD base")
     os.chdir(tmp_path)
 
     result = runner.invoke(app, ["upgrade"], input="N\n")
     assert result.exit_code == 0
-    assert (
-        tmp_path / "manage.py"
-    ).read_text() == "# OLD", "File should remain unchanged"
+    assert (tmp_path / "manage.py").read_text() == "# OLD", "File should remain unchanged"
 
 
 _DEFAULT_OK = "3\n2\n0\nY\n"
 
 
 @patch(_PATCH_PATH, return_value=True)
-def test_upgrade_end_to_end(
-    _mock_install, tmp_path: Path
-) -> None:
+def test_upgrade_end_to_end(_mock_install, tmp_path: Path) -> None:
     """E2E: forge start --no-input -> upgrade -> verify version."""
     os.chdir(tmp_path)
-    r1 = runner.invoke(
-        app, ["start", "testproj", "--no-input"]
-    )
+    r1 = runner.invoke(app, ["start", "testproj", "--no-input"])
     assert r1.exit_code == 0, str(r1.exception)
     project = tmp_path / "testproj"
 
@@ -169,5 +155,6 @@ def test_upgrade_end_to_end(
     assert r2.exit_code == 0, str(r2.exception)
 
     import tomli
+
     toml = tomli.loads((project / ".forge.toml").read_text())
     assert "forge" in toml

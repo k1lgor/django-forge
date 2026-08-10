@@ -10,9 +10,7 @@ from django_forge import __version__ as _forge_version
 from django_forge.renderer import Renderer
 
 FIXTURE_TEMPLATES = Path(__file__).resolve().parent / "fixtures" / "templates"
-PROJECT_TEMPLATES = (
-    Path(__file__).resolve().parent.parent / "django_forge" / "templates"
-)
+PROJECT_TEMPLATES = Path(__file__).resolve().parent.parent / "django_forge" / "templates"
 
 # Standard context dict from architecture.md §3.3
 MINIMAL_CONTEXT = {
@@ -260,9 +258,7 @@ def test_accounts_apps_python_valid(project_renderer: Renderer, pure_context: di
 # ---------------------------------------------------------------------------
 
 
-def test_pyproject_toml_has_dev_deps(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_pyproject_toml_has_dev_deps(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.A — pyproject.toml has [project.optional-dependencies] dev section."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -277,9 +273,7 @@ def test_pyproject_toml_has_dev_deps(
         assert "coverage>=" in content
 
 
-def test_pyproject_toml_has_ruff_config(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_pyproject_toml_has_ruff_config(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.B-C — pyproject.toml has [tool.ruff] and [tool.ruff.format]."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -293,9 +287,7 @@ def test_pyproject_toml_has_ruff_config(
         assert 'quote-style = "double"' in content
 
 
-def test_pyproject_toml_has_ty_config(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_pyproject_toml_has_ty_config(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.D — pyproject.toml has [tool.ty] section."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -305,9 +297,7 @@ def test_pyproject_toml_has_ty_config(
         assert 'python-version = "3.12"' in content
 
 
-def test_pyproject_toml_has_pytest_config(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_pyproject_toml_has_pytest_config(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.E — pyproject.toml has [tool.pytest.ini_options] with DJANGO_SETTINGS_MODULE."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -319,9 +309,7 @@ def test_pyproject_toml_has_pytest_config(
         assert "DJANGO_SETTINGS_MODULE" in content
 
 
-def test_ci_workflow_valid_yaml(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_ci_workflow_valid_yaml(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.F — .github/workflows/ci.yml is valid YAML."""
     import yaml as _yaml
 
@@ -333,9 +321,7 @@ def test_ci_workflow_valid_yaml(
         _yaml.safe_load(output.read_text())
 
 
-def test_pre_commit_config_valid_yaml(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_pre_commit_config_valid_yaml(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.H — .pre-commit-config.yaml is valid YAML."""
     import yaml as _yaml
 
@@ -347,9 +333,7 @@ def test_pre_commit_config_valid_yaml(
         _yaml.safe_load(output.read_text())
 
 
-def test_conftest_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_conftest_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.I — tests/conftest.py renders to valid Python."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -359,9 +343,7 @@ def test_conftest_python_valid(
         assert_valid_python(output.read_text(), "tests/conftest.py")
 
 
-def test_example_test_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_example_test_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.J — tests/test_example.py renders to valid Python."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -371,9 +353,7 @@ def test_example_test_python_valid(
         assert_valid_python(output.read_text(), "tests/test_example.py")
 
 
-def test_makefile_uses_uv(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_makefile_uses_uv(project_renderer: Renderer, pure_context: dict) -> None:
     """1.4.N — Makefile uses uv run for all commands."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -390,9 +370,7 @@ def test_makefile_uses_uv(
 # ---------------------------------------------------------------------------
 
 
-def test_auth_models_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_models_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.A — models.py renders to valid Python with AbstractUser."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -406,9 +384,7 @@ def test_auth_models_python_valid(
         assert "email" in src  # email field exists
 
 
-def test_auth_models_has_usermanager(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_models_has_usermanager(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.I — models.py references UserManager from managers.py."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -417,9 +393,7 @@ def test_auth_models_has_usermanager(
         assert "objects = UserManager()" in src
 
 
-def test_auth_managers_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_managers_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.B — managers.py renders to valid Python with UserManager."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -432,9 +406,7 @@ def test_auth_managers_python_valid(
         assert "create_superuser" in src
 
 
-def test_auth_admin_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_admin_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.C — admin.py renders to valid Python with custom UserAdmin."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -448,9 +420,7 @@ def test_auth_admin_python_valid(
         assert "UserChangeForm" in src
 
 
-def test_auth_forms_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_forms_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.D — forms.py renders to valid Python with UserCreationForm."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -463,9 +433,7 @@ def test_auth_forms_python_valid(
         assert "UserChangeForm" in src
 
 
-def test_auth_urls_python_valid_pure(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_urls_python_valid_pure(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.L — urls.py for pure Django renders valid Python."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -505,9 +473,7 @@ def test_auth_urls_python_valid_drf() -> None:
         assert "DefaultRouter" in src
 
 
-def test_auth_signals_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_signals_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.F — signals.py renders to valid Python with post_save handler."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -520,9 +486,7 @@ def test_auth_signals_python_valid(
         assert "receiver" in src
 
 
-def test_auth_apps_has_ready(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_apps_has_ready(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.N — apps.py has ready() method importing signals."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
@@ -532,9 +496,7 @@ def test_auth_apps_has_ready(
         assert "signals" in src
 
 
-def test_auth_test_models_python_valid(
-    project_renderer: Renderer, pure_context: dict
-) -> None:
+def test_auth_test_models_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
     """1.5.M — tests/test_models.py renders to valid Python."""
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)

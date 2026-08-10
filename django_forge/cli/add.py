@@ -354,7 +354,7 @@ def _add_social(
     project_dir: Path,
     context: dict,
     renderer: Renderer,
-    existing_layers: list[str],
+    _existing_layers: list[str],
 ) -> bool:
     """Add Social Auth layer to an existing project.
 
@@ -381,7 +381,7 @@ def _add_storage(
     project_dir: Path,
     context: dict,
     renderer: Renderer,
-    existing_layers: list[str],
+    _existing_layers: list[str],
 ) -> bool:
     """Add S3 Storage layer to an existing project."""
     console.print()

@@ -3,8 +3,21 @@ name: CI
 on:
   push:
     branches: [main]
+    # Only run for forge tooling changes — not the site or docs.
+    paths:
+      - "django_forge/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "django_forge/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
