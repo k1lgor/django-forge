@@ -1,5 +1,9 @@
 # django-forge 🔨
 
+<p align="center">
+  <img src="site/public/logo.svg" alt="django-forge logo" width="160" height="160">
+</p>
+
 **Ask 3 questions. Get a production-ready Django project.**
 
 `forge` scaffolds complete, immediately runnable Django projects with
