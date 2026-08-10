@@ -5,6 +5,66 @@ All notable changes to django-forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Landing page (`site/`)** — A Svelte 5 + Vite single-page site for django-forge:
+  - Terminal boot sequence hero (typewriter + 11-layer power-on self-test, once per session)
+  - Interactive forge simulator — answer the 3 wizard questions and watch a real
+    project tree forge itself, built entirely from embedded data (zero network requests)
+  - Eleven layer cards (open as a zoom-in modal showing the real generated files)
+  - "Production-ready by default" security checklist and "your edits survive"
+    upgrade-path panel, both grounded in the actual generated templates
+  - No-JS fallback, `prefers-reduced-motion` support; ~23 kB gzip JS, no images/fonts
+  - **GitHub Pages workflow** — deploys on pushes that touch `site/**` only
+- **Health Check optional layer** — django-health-check at `/healthz/` (DB check
+  always; cache/broker checks when those layers exist). `forge start` (option 7)
+  and `forge add healthcheck`.
+- **Audit Trail optional layer** — django-simple-history on the custom User
+  (`HistoricalRecords`, history middleware, `SimpleHistoryAdmin`). Option 8 /
+  `forge add audit` (prints the migration next-steps).
+- **Backup optional layer** — django-dbbackup nightly dumps (S3 when the storage
+  layer is present, else `backups/`), `make backup` / `make restore`. Option 9 /
+  `forge add backup`.
+- **Seed Data optional layer** — factory-boy `UserFactory` + `manage.py seed`,
+  `make seed`. Option 10 / `forge add seed`.
+- **Preflight optional layer** — `manage.py preflight` (deploy check, pending
+  migrations, `migrate --check`) with clean failure on errors. Option 11 /
+  `forge add preflight`.
+
+### Fixed
+
+- **User edits survive `forge add` / `forge upgrade`** — the renderer now writes a
+  `.forge-manifest.json` (per-file sha256) and re-renders with a pristine policy:
+  forge-owned files are refreshed, user-modified files are skipped byte-for-byte.
+- **`SECRET_KEY` no longer blanked on re-render** — add/upgrade read the existing
+  key back from `.env` or `base.py` instead of writing an empty one.
+- **`forge start --no-input` no longer deletes existing directories** — it refuses
+  with a message instead of silently `rmtree`-ing.
+- **Project names are validated** — path separators, `..`, leading dots and Jinja
+  delimiters are rejected before anything touches disk.
+- **Production security settings actually apply** — secure-cookie/HSTS/SSL-redirect
+  settings moved out of base's import-time `if not DEBUG:` block into `prod.py`;
+  `ALLOWED_HOSTS` is env-driven; removed `SECURE_BROWSER_XSS_FILTER` (gone in
+  Django 5.0).
+- **Generated projects install and boot** — `urls.py` no longer imports
+  `debug_toolbar` unconditionally (dev extra), the Docker image's gunicorn is
+  declared as a dependency, and `.env` is gitignored while `.env.example` stays
+  tracked.
+- **`forge add backup` uses a real S3 backend** — django-dbbackup 4.x removed its
+  bundled S3 storage; backups now reuse the storage layer's configured backend.
+- **`forge` no longer crashes on Windows when output is piped** — rich renders with
+  ANSI instead of the Win32 console API.
+- **`forge upgrade` preserves unknown keys** — `.forge.toml` extra sections and
+  keys survive a layers update.
+
+### Changed
+
+- Renderer writes files atomically and refuses symlink escapes outside the project.
+- `preflight` fails cleanly on check errors instead of raising a traceback.
+- Generated `.gitignore` ignores `backups/`; seed docs note the dev extras.
+
 ## [0.2.1] — 2026-06-10
 
 ### Added
@@ -121,4 +181,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Upgraded type checker from `mypy` to `ty` (Astral) — faster, ecosystem-native with `uv` + `ruff`
 
-[0.1.0]: https://github.com/your-org/django-forge/releases/tag/v0.1.0
+[0.1.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.1.0
