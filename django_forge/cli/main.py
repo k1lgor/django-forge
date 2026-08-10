@@ -70,4 +70,5 @@ def add(
 def upgrade() -> None:
     """Re-apply all templates to an existing project."""
     from django_forge.cli.upgrade import upgrade_project
+
     upgrade_project()

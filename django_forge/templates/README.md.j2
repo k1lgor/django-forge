@@ -101,7 +101,8 @@ Test the restore drill into a scratch database before you need it.
 ## Dev data
 
 ```bash
-make seed    # create 10 sample users (factory-based)
+uv sync --extra dev    # factory-boy lives in the dev extras
+make seed              # create 10 sample users (factory-based)
 ```
 
 Add more users with `uv run manage.py seed --users 50`.

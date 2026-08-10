@@ -425,6 +425,11 @@ def _add_healthcheck(
         return False
 
     _render_layers(renderer, context, project_dir)
+
+    console.print()
+    console.print("  [forge.label]Next steps (new dependency + health-check tables):[/]")
+    console.print("    [forge.highlight]uv sync[/]")
+    console.print("    [forge.highlight]uv run manage.py migrate[/]")
     return True
 
 

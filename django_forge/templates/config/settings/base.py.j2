@@ -287,7 +287,8 @@ EMAIL_USE_TLS = settings.email_use_tls
 {% endif %}{% if has_backup %}# Backup (django-dbbackup)
 # ---------------------------------------------------------------------------
 {% if has_backup and has_storage %}
-DBBACKUP_STORAGE = "dbbackup.storage.s3_storage.S3Storage"
+# Reuse whatever backend the storage layer configured (S3) for backups.
+DBBACKUP_STORAGE = STORAGES["default"]["BACKEND"]
 {% else %}
 DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
 DBBACKUP_STORAGE_OPTIONS = {"location": str(BASE_DIR / "backups")}

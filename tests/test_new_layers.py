@@ -63,6 +63,8 @@ def test_add_healthcheck_to_existing_project(_mock_install, tmp_path: Path) -> N
         'path("healthz/", include("health_check.urls"))'
         in (project / "config" / "urls.py").read_text()
     )
+    # health-check ships a table-bearing app — the user must be told to migrate.
+    assert "uv run manage.py migrate" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -118,10 +120,11 @@ def test_backup_local_storage_and_targets(_mock_install, tmp_path: Path) -> None
 
 @patch(_PATCH_PATH, return_value=True)
 def test_backup_uses_s3_when_storage_layer_present(_mock_install, tmp_path: Path) -> None:
-    """Backup + storage layers dump to S3."""
+    """Backup + storage layers reuse the configured S3 backend."""
     project = _start_and_cd(tmp_path, "\n\n6,9\nY\n")
     base = (project / "config" / "settings" / "base.py").read_text()
-    assert "dbbackup.storage.s3_storage.S3Storage" in base
+    assert 'DBBACKUP_STORAGE = STORAGES["default"]["BACKEND"]' in base
+    assert "storages.backends.s3.S3Storage" in base
     assert "FileSystemStorage" not in base
 
 
