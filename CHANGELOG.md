@@ -5,19 +5,10 @@ All notable changes to django-forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] — 2026-08-10
 
 ### Added
 
-- **Landing page (`site/`)** — A Svelte 5 + Vite single-page site for django-forge:
-  - Terminal boot sequence hero (typewriter + 11-layer power-on self-test, once per session)
-  - Interactive forge simulator — answer the 3 wizard questions and watch a real
-    project tree forge itself, built entirely from embedded data (zero network requests)
-  - Eleven layer cards (open as a zoom-in modal showing the real generated files)
-  - "Production-ready by default" security checklist and "your edits survive"
-    upgrade-path panel, both grounded in the actual generated templates
-  - No-JS fallback, `prefers-reduced-motion` support; ~23 kB gzip JS, no images/fonts
-  - **GitHub Pages workflow** — deploys on pushes that touch `site/**` only
 - **Health Check optional layer** — django-health-check at `/healthz/` (DB check
   always; cache/broker checks when those layers exist). `forge start` (option 7)
   and `forge add healthcheck`.
@@ -181,4 +172,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Upgraded type checker from `mypy` to `ty` (Astral) — faster, ecosystem-native with `uv` + `ruff`
 
+[0.3.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.3.0
 [0.1.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.1.0

@@ -45,7 +45,7 @@ The wizard asks three questions:
 After answering, `forge` generates all files, runs `uv sync`, migrates the database, and runs `check --deploy`.
 
 ```
-=== FORGE v0.1.0 - django project scaffolder ===
+=== FORGE v0.3.0 - django project scaffolder ===
 
   Forge your Django project:  myproject
 

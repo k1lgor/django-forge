@@ -2,7 +2,7 @@
 // Every artifact path below is a real file the CLI's templates generate.
 // Verified against django_forge/templates/*.j2.
 
-export const FORGE_VERSION = "0.2.1";
+export const FORGE_VERSION = "0.3.0";
 
 export const FRAMEWORKS = [
   {
@@ -181,7 +181,7 @@ export const CORE_FILES = [
   { path: ".gitignore", lines: ["__pycache__/", ".env", "!.env.example"] },
   { path: "Makefile", lines: [".PHONY: lint typecheck test"] },
   { path: "README.md", lines: ["# {{ project_name }}"] },
-  { path: ".forge.toml", lines: ["[forge]", 'version = "0.2.1"'] },
+  { path: ".forge.toml", lines: ["[forge]", `version = "${FORGE_VERSION}"`] },
 ];
 
 // Build the ordered file set for a chosen configuration.
@@ -248,7 +248,7 @@ export const UPGRADE_STATES = [
 ];
 
 export const BOOT_LINES = [
-  { kind: "banner", text: "=== FORGE v0.2.1 - django project scaffolder ===", color: "cyan" },
+  { kind: "banner", text: `=== FORGE v${FORGE_VERSION} - django project scaffolder ===`, color: "cyan" },
   { kind: "tagline", text: "Ask 3 questions. Get a production-ready Django project.", color: "yellow" },
   { kind: "led", label: "python tooling", ok: "uv · ruff · ty" },
   { kind: "led", label: "auth", ok: "custom user · allauth" },
