@@ -1,7 +1,7 @@
 # django-forge 🔨
 
 <p align="center">
-  <img src="site/public/logo.svg" alt="django-forge logo" width="160" height="160">
+  <img src="site/public/hero.png" alt="django-forge logo">
 </p>
 
 **Ask 3 questions. Get a production-ready Django project.**
