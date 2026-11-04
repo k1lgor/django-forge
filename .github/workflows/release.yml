@@ -195,7 +195,7 @@ jobs:
       - name: Publish with trusted publishing (OIDC)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: ${{ inputs.index == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://pypi.org/legacy/' }}
+          repository-url: ${{ inputs.index == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
 
   github-release:
     name: GitHub Release (notes)
