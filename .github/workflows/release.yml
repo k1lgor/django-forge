@@ -92,7 +92,9 @@ jobs:
               releases = data.get("releases", {})
               if version in releases and releases[version]:
                   errors.append(
-                      f"{name} {version} already exists on {index} - bump the version"
+                      f"{name} {version} already exists on {index} - repeat uploads to "
+                      "THIS index are blocked; a real tag publishes against pypi.org "
+                      "and is checked there separately"
                   )
               else:
                   print(
