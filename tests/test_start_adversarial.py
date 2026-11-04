@@ -31,7 +31,10 @@ _DEFAULT_OK_ENTER = "\n\n0\n\n"  # all defaults + no layers + confirm
 
 def test_secret_key_length() -> None:
     key = _generate_secret_key()
-    assert key.startswith("django-insecure-")
+    # No `django-insecure-` prefix: Django's W009 deploy check rejects it and
+    # entry 33 makes a failing deploy check fail the scaffold.
+    assert not key.startswith("django-insecure-")
+    assert "django-insecure-" not in key
     assert len(key) >= 66
 
 
@@ -231,7 +234,7 @@ def test_secret_key_no_jinja_conflict() -> None:
 def test_start_rejects_empty_name() -> None:
     """Empty project name is refused with a clear message."""
     result = runner.invoke(app, ["start", ""])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "cannot be empty" in result.stdout
 
 

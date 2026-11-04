@@ -1,8 +1,9 @@
 """Custom forms for the User model."""
 
-from django import forms
 from django.contrib.auth.forms import (
     UserChangeForm as BaseUserChangeForm,
+)
+from django.contrib.auth.forms import (
     UserCreationForm as BaseUserCreationForm,
 )
 
@@ -12,7 +13,7 @@ from apps.accounts.models import User
 class UserCreationForm(BaseUserCreationForm):
     """Form for creating new users."""
 
-    class Meta(BaseUserCreationForm.Meta):
+    class Meta(BaseUserCreationForm.Meta):  # ty: ignore[invalid-attribute-override]
         model = User
         fields = ("email",)
 
@@ -20,6 +21,6 @@ class UserCreationForm(BaseUserCreationForm):
 class UserChangeForm(BaseUserChangeForm):
     """Form for updating users."""
 
-    class Meta(BaseUserChangeForm.Meta):
+    class Meta(BaseUserChangeForm.Meta):  # ty: ignore[invalid-attribute-override]
         model = User
         fields = "__all__"

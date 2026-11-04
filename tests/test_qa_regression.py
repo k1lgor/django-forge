@@ -51,9 +51,9 @@ def test_all_24_combos_render(_mock_install, api, db, fw_in, db_in, tmp_path) ->
             project = tmp_path / project_name
             pyproject = (project / "pyproject.toml").read_text()
             if use_celery:
-                assert "celery~=5.4.0" in pyproject, f"Missing celery dep for {project_name}"
+                assert "celery~=5.6.0" in pyproject, f"Missing celery dep for {project_name}"
             else:
-                assert "celery~=5.4.0" not in pyproject, f"Unexpected celery dep for {project_name}"
+                assert "celery~=5.6.0" not in pyproject, f"Unexpected celery dep for {project_name}"
 
 
 @patch(_PATCH_PATH, return_value=True)
@@ -63,7 +63,8 @@ def test_no_input_refuses_existing_dir(_mock_install, tmp_path) -> None:
     (tmp_path / "mydir").mkdir()
     (tmp_path / "mydir" / "old.txt").write_text("old")
     result = runner.invoke(app, ["start", "mydir", "--no-input"])
-    assert result.exit_code == 0
+    # Refusing an overwrite is a failure branch (G7 / entry 38) → exit 1.
+    assert result.exit_code == 1
     assert "Refusing" in result.stdout
     assert not (tmp_path / "mydir" / "manage.py").exists()
     assert (tmp_path / "mydir" / "old.txt").exists()

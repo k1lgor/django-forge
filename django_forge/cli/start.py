@@ -1,7 +1,7 @@
-"""Scaffold orchestration for ``forge start``.
+"""Scaffold orchestration for ``forge-django start``.
 
-Replaces the stub from Story 1.1 with the full pipeline:
-prompt -> render -> install -> success.
+Full pipeline: validate -> resolve settings -> render -> write ``.env`` ->
+install -> success. Every failure branch raises ``typer.Exit(code=1)`` (G7).
 """
 
 import re
@@ -10,11 +10,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import typer
+
 from django_forge import __version__
 from django_forge.cli.console import console
-from django_forge.cli.installer import run_post_install
+from django_forge.cli.installer import is_verbose, run_post_install
 from django_forge.cli.prefs import save_prefs
 from django_forge.cli.prompts import confirm_scaffold
+from django_forge.project import build_context
 from django_forge.renderer import Renderer
 
 _PROJECT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -43,7 +46,14 @@ def validate_project_name(name: str) -> str | None:
     return None
 
 
-def start_project(*, project_name: str, no_input: bool = False) -> None:
+def start_project(
+    *,
+    project_name: str,
+    no_input: bool = False,
+    api: str | None = None,
+    db: str | None = None,
+    layers: list[str] | None = None,
+) -> None:
     """Scaffold a new Django project.
 
     Full end-to-end flow:
@@ -51,10 +61,18 @@ def start_project(*, project_name: str, no_input: bool = False) -> None:
     2. Brand banner
     3. Validate project name
     4. Check target directory
-    5. Confirm scaffold settings with user
-    6. Generate template files via renderer
-    7. Install dependencies, migrate, deploy-check
+    5. Resolve scaffold settings — the wizard interactively (prefs cache
+       read/written), or Decision 2's fixed ``--no-input`` defaults
+       (DRF + PostgreSQL + no layers) with explicit ``--api``/``--db``/
+       ``--layers`` overrides, in which case the prefs cache is never
+       touched
+    6. Render template files, then write the generated ``SECRET_KEY`` into
+       the gitignored ``.env`` (``.env.example`` keeps its placeholder, G8)
+    7. Install dependencies, migrate, deploy-check against prod settings
     8. Print success banner with next steps
+
+    Every failure branch raises ``typer.Exit(code=1)``; a user declining
+    the summary simply aborts with status 0.
     """
     # 0. Detect CI / no-input mode
     ci_detected = False
@@ -70,7 +88,7 @@ def start_project(*, project_name: str, no_input: bool = False) -> None:
     if name_error:
         console.print()
         console.print(f"  [forge.error]{name_error}[/]")
-        return
+        raise typer.Exit(code=1)
 
     # 3. Check target directory
     target_dir = Path.cwd() / project_name
@@ -86,41 +104,96 @@ def start_project(*, project_name: str, no_input: bool = False) -> None:
                 "directory manually or run interactively."
                 "[/]"
             )
-            return
+            raise typer.Exit(code=1)
         if not _handle_existing_directory(target_dir):
-            return
+            raise typer.Exit(code=1)
 
-    # 4. Confirm scaffold settings
+    # 4. Resolve scaffold settings
     secret_key = _generate_secret_key()
-    context = confirm_scaffold(
-        project_name,
-        api=None,
-        db=None,
-        layers=None,
-        no_input=no_input,
-    )
-    if context is None:
-        return
+    if no_input:
+        # Decision 2: fixed defaults with explicit option overrides, and
+        # the prefs cache is neither read nor written in this mode — so the
+        # wizard (the prefs reader) is bypassed entirely.
+        context = build_context(
+            {"project_name": project_name, "api": api, "db": db, "layers": layers}
+        )
+    else:
+        context = confirm_scaffold(
+            project_name,
+            api=api,
+            db=db,
+            layers=layers,
+            no_input=no_input,
+        )
+        if context is None:
+            # The user declined the summary: an abort, not a failure.
+            return
+        save_prefs(api=context["api"], db=context["db"], layers=context["layers"])
     context["secret_key"] = secret_key
 
-    save_prefs(api=context["api"], db=context["db"], layers=context["layers"])
-
-    # 4. Generate template files
+    # 5. Generate template files
     renderer = _get_renderer()
     console.print()
     console.print(f"  [forge.label]Forging [forge.highlight]{project_name}[/]...")
-    renderer.render_project(context, target_dir)
+    try:
+        renderer.render_project(context, target_dir)
+    except Exception as exc:  # every render failure exits 1 (G7)
+        console.print()
+        console.print(f"  [forge.error]Rendering failed:[/] {exc}")
+        raise typer.Exit(code=1) from exc
 
-    # 5. Post-install steps
+    # The real key lives only in the gitignored `.env`; `.env.example` was
+    # rendered from the `***` placeholder path (G8).
+    _write_env_file(target_dir, secret_key)
+
+    if is_verbose():
+        console.print(
+            f"  [forge.muted]verbose: api={context['api']} db={context['db']}"
+            f" layers={', '.join(context['layers']) or 'none'}[/]"
+        )
+        console.print(f"  [forge.muted]verbose: secrets in {target_dir / '.env'} (gitignored)[/]")
+
+    # 6. Post-install steps
     success = run_post_install(target_dir)
 
-    # 6. Offer to create a superuser (skip in CI / --no-input)
+    # 7. Offer to create a superuser (skip in CI / --no-input)
     if success and not no_input:
         _prompt_createsuperuser(target_dir)
 
-    # 7. Success banner
-    if success:
-        _print_success(project_name)
+    # 8. Success banner — or a failing exit status when any step failed (G7)
+    if not success:
+        raise typer.Exit(code=1)
+    _print_success(project_name)
+
+
+def _write_env_file(project_dir: Path, secret_key: str) -> None:
+    """Materialise ``.env`` from ``.env.example``, substituting the real key (G8).
+
+    The example keeps its ``***`` placeholder; the generated key exists only
+    here, where ``.gitignore`` excludes it from version control. Copying the
+    example wholesale keeps every other scaffolded variable (DATABASE_URL,
+    CORS_ALLOWED_ORIGINS, ...) available to the post-install steps without a
+    manual copy step.
+    """
+    example = project_dir / ".env.example"
+    try:
+        if example.exists():
+            content, count = re.subn(
+                r"^DJANGO_SECRET_KEY=.*$",
+                f"DJANGO_SECRET_KEY={secret_key}",
+                example.read_text(encoding="utf-8"),
+                count=1,
+                flags=re.MULTILINE,
+            )
+            if not count:
+                content = f"DJANGO_SECRET_KEY={secret_key}\n" + content
+        else:  # pragma: no cover - example always renders
+            content = f"DJANGO_SECRET_KEY={secret_key}\n"
+        (project_dir / ".env").write_text(content, encoding="utf-8")
+    except OSError as exc:
+        console.print()
+        console.print(f"  [forge.error]Cannot write .env:[/] {exc}")
+        raise typer.Exit(code=1) from exc
 
 
 def _print_banner(
@@ -174,9 +247,14 @@ def _handle_existing_directory(target_dir: Path) -> bool:
 
 
 def _generate_secret_key() -> str:
-    """Generate a Django-style secret key."""
-    key = secrets.token_urlsafe(50)
-    return f"django-insecure-{key}"
+    """Generate a Django-style secret key.
+
+    Deliberately *not* prefixed ``django-insecure-``: Django's deploy check
+    (``security.W009``) flags that prefix as insecure, and file 33 makes an
+    insecure ``SECRET_KEY`` fail the post-install deploy check — a healthy
+    scaffold must still exit 0 (CUJ 1).
+    """
+    return secrets.token_urlsafe(50)
 
 
 def _get_renderer() -> Renderer:
@@ -196,9 +274,11 @@ def _print_success(project_name: str) -> None:
     console.print(f"    [forge.highlight]cd {project_name}[/]")
     console.print("    [forge.highlight]uv run manage.py runserver[/]")
     console.print()
-    console.print("  [forge.label]Set production environment variables:[/]")
-    console.print("    [forge.highlight]cp .env.example .env[/]")
-    console.print("    [forge.muted](edit .env with your secrets)[/]")
+    console.print("  [forge.label]Environment:[/]")
+    console.print(
+        "    [forge.muted].env was created with a generated secret key — extend it as needed[/]"
+    )
+    console.print("    [forge.muted](every available variable is listed in .env.example)[/]")
     console.print()
 
 

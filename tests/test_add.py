@@ -23,7 +23,7 @@ def _make_forge_project(tmp_path: Path) -> None:
     (tmp_path / "config").mkdir(parents=True, exist_ok=True)
     (tmp_path / "config" / "settings").mkdir(parents=True, exist_ok=True)
 
-    _make_forge_toml(tmp_path, ["drf", "postgres", []])
+    _make_forge_toml(tmp_path, ("drf", "postgres", []))
 
 
 def _make_forge_toml(
@@ -45,9 +45,9 @@ def _make_forge_toml(
 def test_add_detects_project_from_forge_toml(tmp_path: Path) -> None:
     """6.1.A — forge add reads .forge.toml and parses context."""
     _make_forge_toml(tmp_path, ("drf", "postgres", []))
-    from django_forge.cli.add import _detect_project
+    from django_forge.project import detect_project
 
-    context = _detect_project(tmp_path)
+    context = detect_project(tmp_path)
     assert context is not None
     assert context["api"] == "drf"
     assert context["db"] == "postgres"
@@ -63,7 +63,7 @@ def test_add_non_forge_project_error(tmp_path: Path) -> None:
     """6.1.B — forge add outside a forge project shows error."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "docker"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
@@ -77,7 +77,7 @@ def test_add_docker_already_installed(tmp_path: Path) -> None:
     _make_forge_toml(tmp_path, ("pure", "sqlite", ["docker"]))
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "docker"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "already installed" in result.stdout
 
 
@@ -90,7 +90,7 @@ def test_add_unknown_layer(tmp_path: Path) -> None:
     """6.1.G — Unknown layer name shows error."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "foo"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Unknown layer" in result.stdout
     assert "docker" in result.stdout
     assert "celery" in result.stdout
@@ -108,7 +108,8 @@ def test_add_docker_creates_files_and_updates_toml(_mock_install, tmp_path: Path
     _make_forge_toml(tmp_path, ("pure", "sqlite", []))
     os.chdir(tmp_path)
 
-    result = runner.invoke(app, ["add", "docker"])
+    # Y = accept the overwrite of the files a pristine render would rewrite.
+    result = runner.invoke(app, ["add", "docker"], input="Y\n")
     assert result.exit_code == 0, str(result.exception)
     assert "Added" in result.stdout
     assert "docker" in result.stdout
@@ -135,7 +136,7 @@ def test_add_docker_preserves_existing_layers(_mock_install, tmp_path: Path) -> 
     """6.1.E — .forge.toml preserves existing layers when adding new ones."""
     _make_forge_toml(tmp_path, ("drf", "postgres", ["celery"]))
     os.chdir(tmp_path)
-    runner.invoke(app, ["add", "docker"])
+    runner.invoke(app, ["add", "docker"], input="Y\n")
     import tomli
 
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
@@ -155,9 +156,10 @@ def test_add_docker_overwrite_prompt(tmp_path: Path) -> None:
     (tmp_path / "Dockerfile").write_text("# old content")
     os.chdir(tmp_path)
 
-    # Input "N" = don't overwrite
+    # Input "N" = don't overwrite → refused overwrite is a failure (exit 1)
     result = runner.invoke(app, ["add", "docker"], input="N\n")
-    assert result.exit_code == 0
+    assert result.exit_code == 1
+    assert (tmp_path / "Dockerfile").read_text() == "# old content"
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +171,7 @@ def test_add_celery_handled_when_no_forge_project(tmp_path: Path) -> None:
     """Non-forge project error also works for celery."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "celery"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
@@ -177,21 +179,21 @@ def test_add_email_handled_when_no_forge_project(tmp_path: Path) -> None:
     """Non-forge project error also works for email."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "email"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
 # ---------------------------------------------------------------------------
-# _update_forge_toml unit test
+# project.update_layers unit test
 # ---------------------------------------------------------------------------
 
 
 def test_update_forge_toml_preserves_api_and_db(tmp_path: Path) -> None:
-    """_update_forge_toml preserves api and db values."""
+    """project.update_layers preserves api and db values."""
     _make_forge_toml(tmp_path, ("ninja", "postgres", ["docker"]))
-    from django_forge.cli.add import _update_forge_toml
+    from django_forge.project import update_layers
 
-    _update_forge_toml(tmp_path / ".forge.toml", ["docker", "celery"])
+    update_layers(tmp_path / ".forge.toml", ["docker", "celery"])
     import tomli
 
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
@@ -289,9 +291,9 @@ def test_add_email_declined_no_files_changed(_mock_install, tmp_path) -> None:
     (tmp_path / ".env.example").write_text("# ORIGINAL env")
     os.chdir(tmp_path)
 
-    # Input N = don't overwrite
+    # Input N = don't overwrite → refusal is a failure (exit 1)
     result = runner.invoke(app, ["add", "email"], input="N\n")
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert (tmp_path / ".env.example").read_text() == "# ORIGINAL env", (
         "File should remain unchanged"
     )
@@ -320,9 +322,9 @@ def test_add_celery_then_docker_order_independence(_mock_install, tmp_path) -> N
     assert r1.exit_code == 0
     assert (tmp_path / "config" / "celery.py").exists()
 
-    # Then add docker
-    r2 = runner.invoke(app, ["add", "docker"])
-    assert r2.exit_code == 0
+    # Then add docker (the byte-diff preview prompts for pyproject/.forge.toml)
+    r2 = runner.invoke(app, ["add", "docker"], input="Y\n")
+    assert r2.exit_code == 0, str(r2.exception)
     assert (tmp_path / "Dockerfile").exists()
 
     import tomli

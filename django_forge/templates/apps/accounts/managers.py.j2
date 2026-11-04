@@ -1,15 +1,18 @@
 """Custom UserManager for email-based authentication."""
 
+from typing import TYPE_CHECKING
+
 from django.contrib.auth.base_user import BaseUserManager
 from django.utils.translation import gettext_lazy as _
+
+if TYPE_CHECKING:
+    from apps.accounts.models import User
 
 
 class UserManager(BaseUserManager):
     """Manager for the custom User model with email-based auth."""
 
-    def create_user(
-        self, email: str, password: str | None = None, **extra_fields
-    ) -> "User":
+    def create_user(self, email: str, password: str | None = None, **extra_fields) -> "User":
         """Create and save a User with the given email and password."""
         if not email:
             raise ValueError(_("The email address must be set"))
@@ -19,9 +22,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(
-        self, email: str, password: str | None = None, **extra_fields
-    ) -> "User":
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields) -> "User":
         """Create and save a superuser with the given email and password."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)

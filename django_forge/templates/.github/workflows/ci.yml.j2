@@ -7,13 +7,13 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ "{{" }} github.workflow ${{ "}}" }}-${{ "{{" }} github.ref ${{ "}}" }}
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
   cancel-in-progress: true
 
 jobs:
   lint:
     name: Lint (Python 3.12)
-    runs-on: ${{ "{{" }} matrix.os ${{ "}}" }}
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Lint with ruff
         run: uv run ruff check .
@@ -43,7 +43,7 @@ jobs:
 
   typecheck:
     name: Type check (Python 3.12)
-    runs-on: ${{ "{{" }} matrix.os ${{ "}}" }}
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
     strategy:
       fail-fast: false
       matrix:
@@ -63,14 +63,14 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Type check with ty
         run: uv run ty check
 
   test:
     name: Test (Python 3.12)
-    runs-on: ${{ "{{" }} matrix.os ${{ "}}" }}
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +90,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Run tests
         run: uv run pytest

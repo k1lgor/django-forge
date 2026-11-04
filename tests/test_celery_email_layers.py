@@ -59,7 +59,7 @@ def test_celery_deps_in_pyproject(_mock_install, fw_in, db_in, suffix, tmp_path)
     input_str = f"{fw_in}\n{db_in}\n2\nY\n"
     runner.invoke(app, ["start", f"test_dep_{suffix}"], input=input_str)
     toml = (tmp_path / f"test_dep_{suffix}" / "pyproject.toml").read_text()
-    assert "celery~=5.4.0" in toml
+    assert "celery~=5.6.0" in toml
     assert "redis>=" in toml
 
 

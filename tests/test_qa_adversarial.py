@@ -32,12 +32,13 @@ def _make_forge_toml(path: Path, layers: list[str]) -> None:
 
 @patch(_PATCH_PATH, return_value=True)
 def test_upgrade_no_config_dir(_mock_install, tmp_path: Path) -> None:
-    """Upgrade on project with no config/ dir still works."""
+    """Declining the unknown-baseline prompt on a config-less project exits 1."""
     _make_forge_toml(tmp_path, [])
     (tmp_path / "manage.py").write_text("# old")
     os.chdir(tmp_path)
     result = runner.invoke(app, ["upgrade"], input="N\n")
-    assert result.exit_code == 0
+    assert result.exit_code == 1
+    assert (tmp_path / "manage.py").read_text() == "# old"
 
 
 @patch(_PATCH_PATH, return_value=True)
@@ -49,23 +50,27 @@ def test_upgrade_all_layers(_mock_install, tmp_path: Path) -> None:
     (tmp_path / "config" / "__init__.py").write_text("# config")
     (tmp_path / "config" / "settings" / "base.py").write_text("# base")
     os.chdir(tmp_path)
-    result = runner.invoke(app, ["upgrade"], input="Y\n")
+    # Y = accept the unknown baseline (no .forge-manifest.json),
+    # Y = accept the files a pristine re-render would overwrite.
+    result = runner.invoke(app, ["upgrade"], input="Y\nY\n")
     assert result.exit_code == 0, str(result.exception)
 
 
 def test_upgrade_empty_project(tmp_path: Path) -> None:
-    """Upgrade with .forge.toml but no other files still works."""
+    """Upgrade on an otherwise empty project: unanswered prompts refuse (exit 1)."""
     _make_forge_toml(tmp_path, [])
     os.chdir(tmp_path)
+    # No answers: both confirmation prompts fall back to their default (No),
+    # so the refusal path exits 1 instead of the old exit 0.
     result = runner.invoke(app, ["upgrade"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
 
 
 def test_upgrade_missing_toml(tmp_path: Path) -> None:
     """Upgrade with no .forge.toml at all."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["upgrade"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
@@ -79,7 +84,8 @@ def test_add_docker_still_works(_mock_install, tmp_path: Path) -> None:
     """forge add docker still works after template changes."""
     _make_forge_toml(tmp_path, [])
     os.chdir(tmp_path)
-    result = runner.invoke(app, ["add", "docker"])
+    # Y = accept overwriting the files the fresh render would replace.
+    result = runner.invoke(app, ["add", "docker"], input="Y\n")
     assert result.exit_code == 0
     assert (tmp_path / "Dockerfile").exists()
 

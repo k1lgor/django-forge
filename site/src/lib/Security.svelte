@@ -1,7 +1,7 @@
 <script>
   import { SECURITY_CHECKS } from "./forge-data.js";
 
-  let open = $state(null);
+  let open = $state(/** @type {number | null} */ (null));
 </script>
 
 <section class="security" id="security">

@@ -1,11 +1,12 @@
 <script>
   import { LAYERS } from "./forge-data.js";
 
-  let open = $state(null);
-  let closeBtn = $state(null);
+  let open = $state(/** @type {string | null} */ (null));
+  let closeBtn = $state(/** @type {HTMLButtonElement | null} */ (null));
 
   const activeLayer = $derived(LAYERS.find((l) => l.id === open) ?? null);
 
+  /** @param {string} id */
   function openCard(id) {
     open = id;
   }
@@ -18,6 +19,7 @@
   $effect(() => {
     if (open !== null) {
       document.body.style.overflow = "hidden";
+      /** @type {(e: KeyboardEvent) => void} */
       const onKey = (e) => {
         if (e.key === "Escape") closeCard();
       };
@@ -58,9 +60,14 @@
     <div
       class="modal"
       role="dialog"
+      tabindex="-1"
       aria-modal="true"
       aria-label={activeLayer.name}
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => {
+        if (e.key === "Escape") closeCard();
+        e.stopPropagation();
+      }}
     >
       <div class="mhead">
         <span class="flame" aria-hidden="true">▮</span>

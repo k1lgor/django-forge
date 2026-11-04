@@ -3,6 +3,7 @@
 import ast
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -13,7 +14,6 @@ PROJECT_TEMPLATES = Path(__file__).resolve().parent.parent / "django_forge" / "t
 MINIMAL_CONTEXT = {
     "project_name": "myproject",
     "project_slug": "myproject",
-    "secret_key": "django-insecure-test-key-not-for-production",
     "api": "pure",
     "db": "sqlite",
     "layers": [],
@@ -48,7 +48,7 @@ def test_render_with_empty_context_raises_error() -> None:
 def test_render_with_extra_context_keys() -> None:
     """Extra context keys that templates don't reference should be ignored."""
     renderer = Renderer(PROJECT_TEMPLATES)
-    ctx = dict(MINIMAL_CONTEXT)
+    ctx: dict[str, Any] = dict(MINIMAL_CONTEXT)
     ctx["completely_unused_key"] = "should_not_cause_errors"
     ctx["another_extra"] = 42
     with tempfile.TemporaryDirectory() as tmp:
@@ -63,7 +63,6 @@ def test_render_with_all_options_enabled() -> None:
     ctx = {
         "project_name": "megaproject",
         "project_slug": "megaproject",
-        "secret_key": "django-insecure-mega-key",
         "api": "drf",
         "db": "postgres",
         "layers": ["docker", "celery", "email"],
@@ -183,17 +182,28 @@ def test_dotfile_template_renders() -> None:
         assert (target / ".gitignore").exists()
 
 
-def test_secret_key_with_special_chars() -> None:
-    """Secret key containing Jinja2-special characters shouldn't crash rendering.
+def test_secret_key_never_reaches_rendered_files() -> None:
+    """A secret in the render context must never reach a rendered file.
 
-    Real Django SECRET_KEY values can contain $, {, }, %, etc.
+    The CLI still passes the recovered/generated key through the context
+    (``add`` / ``upgrade``), but 0.4 templates render no ``secret_key`` at all —
+    the real value lives only in the gitignored ``.env`` (design file 8 / G8).
+    Jinja2-special characters ($, {, }, %, …) must not break rendering either.
     """
     renderer = Renderer(PROJECT_TEMPLATES)
     ctx = dict(MINIMAL_CONTEXT)
-    ctx["secret_key"] = "django-insecure-$%{special}#[char]&*()!"
+    secret = "django-insecure-$%{special}#[char]&*()!"
+    ctx["secret_key"] = secret
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         renderer.render_project(ctx, target)
+        assert (target / "manage.py").exists()  # render did not crash
+        for path in target.rglob("*"):
+            if not path.is_file():
+                continue
+            data = path.read_bytes()
+            assert secret.encode() not in data, f"{path.name} leaked the secret"
+            assert b"django-insecure-" not in data, f"{path.name} carries a baked key"
 
 
 # ---------------------------------------------------------------------------
@@ -248,10 +258,16 @@ def test_postgres_template_renders_valid_python() -> None:
         renderer.render_project(ctx, target)
         base_py = (target / "config" / "settings" / "base.py").read_text()
         ast.parse(base_py)
-        # PostgreSQL DATABASES config should be present
+        # The DSN default is chosen at template time; DATABASES is assembled by
+        # dj_database_url at runtime (design file 8) — settings carry no ENGINE.
         assert "postgresql" in base_py or "postgres" in base_py
-        assert "ENGINE" in base_py
-        assert "django.db.backends.postgresql" in base_py or "sqlite3" in base_py
+        assert "import dj_database_url" in base_py
+        assert (
+            'DATABASES = {"default": dj_database_url.config(default=settings.database_url)}'
+            in base_py
+        )
+        assert "ENGINE" not in base_py
+        assert "django.db.backends" not in base_py
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +290,7 @@ def test_symlink_in_template_root(tmp_path: Path) -> None:
             real_dir / "hello.txt.j2", target_is_directory=False
         )
     except (OSError, NotImplementedError):
-        pytest.skip("Symlinks not supported on this platform")
+        pytest.skip("Symlinks not supported on this platform")  # ty: ignore
 
     renderer = Renderer(link_dir)
     with tempfile.TemporaryDirectory() as out:
@@ -297,7 +313,7 @@ def test_pyproject_toml_has_correct_deps() -> None:
         target = Path(tmp)
         renderer.render_project(ctx, target)
         toml = (target / "pyproject.toml").read_text()
-        assert "django~=5.1.0" in toml
+        assert "django~=6.1.0" in toml
 
 
 def test_pyproject_toml_drf_includes_rest_framework() -> None:

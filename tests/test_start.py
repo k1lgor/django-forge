@@ -1,6 +1,7 @@
 """End-to-end tests for ``forge start myproject`` scaffold flow."""
 
 import os
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -74,7 +75,8 @@ def test_start_existing_directory_n(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
     (tmp_path / "existing").mkdir()
     result = runner.invoke(app, ["start", "existing"], input="N\n")
-    assert result.exit_code == 0
+    # Declining the overwrite is a failure branch — exit 1 (entry 38).
+    assert result.exit_code == 1
     assert "Aborted" in result.stdout
     assert (tmp_path / "existing").exists()
 
@@ -147,11 +149,27 @@ def test_generated_files_match_expected(_mock_install, tmp_path: Path) -> None:
 
 @patch(_PATCH_PATH, return_value=True)
 def test_secret_key_in_context(_mock_install, tmp_path: Path) -> None:
-    """1.3.L — Secret key is generated and included in rendered files."""
+    """1.3.L — The key is generated into `.env`; no baked secret ships (G8)."""
     os.chdir(tmp_path)
     runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
-    base_py = (tmp_path / "testproj" / "config" / "settings" / "base.py").read_text()
-    assert "django-insecure-" in base_py
+    project_dir = tmp_path / "testproj"
+    base_py = (project_dir / "config" / "settings" / "base.py").read_text()
+    # Rendered settings carry no key at all: `django_secret_key` has no default
+    # and the old `django-insecure-*` literal is gone.
+    assert "django-insecure-" not in base_py
+    assert "django_secret_key: str" in base_py
+    assert "django_secret_key: str =" not in base_py
+    # `.env.example` keeps the placeholder; the generated key lives in `.env`.
+    example = (project_dir / ".env.example").read_text()
+    assert "DJANGO_SECRET_KEY=***" in example
+    assert "django-insecure-" not in example
+    env = (project_dir / ".env").read_text()
+    match = re.search(r"^DJANGO_SECRET_KEY=(\S+)$", env, re.MULTILINE)
+    assert match, "generated .env must carry DJANGO_SECRET_KEY"
+    key = match.group(1)
+    assert "django-insecure-" not in key
+    assert len(key) >= 66
+    assert key in env and key not in base_py
 
 
 # ---------------------------------------------------------------------------
@@ -186,10 +204,11 @@ def test_success_banner_shown(_mock_install, tmp_path: Path) -> None:
 
 @patch(_PATCH_PATH, return_value=False)
 def test_install_failure_message(_mock_install, tmp_path: Path) -> None:
-    """When installer fails, no success banner."""
+    """When installer fails: no success banner and exit code 1 (G7)."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["start", "testproj"], input=_DEFAULT_INPUT)
     assert "Project forged successfully" not in result.stdout
+    assert result.exit_code == 1
 
 
 # ---------------------------------------------------------------------------

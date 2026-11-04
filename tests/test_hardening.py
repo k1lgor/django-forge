@@ -7,6 +7,7 @@
 """
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -14,9 +15,9 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from django_forge import __version__ as _forge_version
-from django_forge.cli.add import _update_forge_toml
 from django_forge.cli.main import app
 from django_forge.cli.start import validate_project_name
+from django_forge.project import update_layers
 from django_forge.renderer import MANIFEST_NAME, Renderer
 
 runner = CliRunner()
@@ -144,7 +145,7 @@ def test_start_rejects_path_escape_name(_mock_install, tmp_path: Path) -> None:
     """A hostile project name is refused before anything touches disk."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["start", "../evil", "--no-input"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Project name" in result.stdout
     assert not (tmp_path.parent / "evil").exists()
 
@@ -156,7 +157,7 @@ def test_no_input_refuses_existing_directory(_mock_install, tmp_path: Path) -> N
     (tmp_path / "myapp").mkdir()
     (tmp_path / "myapp" / "keep.txt").write_text("keep")
     result = runner.invoke(app, ["start", "myapp", "--no-input"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Refusing" in result.stdout
     assert (tmp_path / "myapp" / "keep.txt").read_text() == "keep"
 
@@ -168,30 +169,66 @@ def test_no_input_refuses_existing_directory(_mock_install, tmp_path: Path) -> N
 
 def _start_project(tmp_path: Path, name: str = "testproj") -> Path:
     os.chdir(tmp_path)
-    runner.invoke(app, ["start", name, "--no-input"])
+    result = runner.invoke(app, ["start", name, "--no-input"])
+    assert result.exit_code == 0, result.stdout
     project = tmp_path / name
     os.chdir(project)
     return project
 
 
+def _assert_secret_contract(project: Path) -> None:
+    """The 0.4 secret contract (design file 8 / entry 37 / G8).
+
+    * ``config/settings/base.py`` declares ``django_secret_key`` but carries
+      **no** default and **no** baked value — nothing tracked holds a real key.
+    * ``.env.example`` keeps exactly the ``DJANGO_SECRET_KEY=***`` placeholder.
+    * the generated key lives only in the gitignored ``.env`` that
+      ``forge-django start`` materialises from ``.env.example``.
+    """
+    base_py = (project / "config" / "settings" / "base.py").read_text()
+    assert "django_secret_key: str" in base_py
+    assert "django_secret_key: str =" not in base_py  # no default, no baked key
+    assert "SECRET_KEY = settings.django_secret_key" in base_py
+    assert not re.search(r"(?m)^SECRET_KEY\s*=\s*[\"']", base_py)  # no literal key
+    assert "django-insecure-" not in base_py  # no legacy baked key either
+
+    env_example = (project / ".env.example").read_text()
+    example_keys = [
+        line for line in env_example.splitlines() if line.startswith("DJANGO_SECRET_KEY")
+    ]
+    assert example_keys == ["DJANGO_SECRET_KEY=***"]
+
+    gitignore = (project / ".gitignore").read_text()
+    assert re.search(r"(?m)^\.env$", gitignore), ".env must be gitignored"
+
+    env_file = project / ".env"
+    assert env_file.exists(), "forge start must write the generated key to .env"
+    env = env_file.read_text(encoding="utf-8")
+    match = re.search(r"(?m)^DJANGO_SECRET_KEY=([A-Za-z0-9_-]{32,})\r?$", env)
+    assert match, "generated key missing from .env"
+    generated = match.group(1)
+    assert "DJANGO_SECRET_KEY=***" not in env  # placeholder was substituted
+    # The generated key must not leak into any tracked artifact.
+    assert generated not in base_py
+    assert generated not in env_example
+
+
 @patch(_PATCH_PATH, return_value=True)
 def test_add_preserves_secret_key(_mock_install, tmp_path: Path) -> None:
-    """forge add must not blank the generated SECRET_KEY."""
+    """forge add must not blank (or leak) the generated SECRET_KEY."""
     project = _start_project(tmp_path)
-    runner.invoke(app, ["add", "celery"], input="Y\n")
-    base_py = (project / "config" / "settings" / "base.py").read_text()
-    assert 'django_secret_key: str = "django-insecure-' in base_py
-    assert 'django_secret_key: str = ""' not in base_py
+    result = runner.invoke(app, ["add", "celery"], input="Y\n")
+    assert result.exit_code == 0, result.stdout
+    _assert_secret_contract(project)
 
 
 @patch(_PATCH_PATH, return_value=True)
 def test_upgrade_preserves_secret_key(_mock_install, tmp_path: Path) -> None:
-    """forge upgrade must not blank the generated SECRET_KEY."""
+    """forge upgrade must not blank (or leak) the generated SECRET_KEY."""
     project = _start_project(tmp_path)
-    runner.invoke(app, ["upgrade"], input="Y\n")
-    after = (project / "config" / "settings" / "base.py").read_text()
-    assert 'django_secret_key: str = "django-insecure-' in after
-    assert 'django_secret_key: str = ""' not in after
+    result = runner.invoke(app, ["upgrade"], input="Y\n")
+    assert result.exit_code == 0, result.stdout
+    _assert_secret_contract(project)
 
 
 @patch(_PATCH_PATH, return_value=True)
@@ -205,18 +242,18 @@ def test_add_skips_user_edited_settings(_mock_install, tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# _update_forge_toml preserves extra sections
+# update_layers preserves extra sections
 # ---------------------------------------------------------------------------
 
 
-def test_update_forge_toml_preserves_extra_sections(tmp_path: Path) -> None:
+def test_update_layers_preserves_extra_sections(tmp_path: Path) -> None:
     """Extra top-level sections survive a layers update."""
     (tmp_path / ".forge.toml").write_text(
         '[forge]\napi = "drf"\ndb = "postgres"\nlayers = []\n\n'
         '[database]\nurl = "sqlite:///dev.db"\n',
         encoding="utf-8",
     )
-    _update_forge_toml(tmp_path / ".forge.toml", ["docker"])
+    update_layers(tmp_path / ".forge.toml", ["docker"])
     import tomli
 
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())

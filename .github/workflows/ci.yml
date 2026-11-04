@@ -3,12 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
-    # Only run for forge tooling changes — not the site or docs.
+    # Tooling, tests, packaging metadata and the site landing page gate CI —
+    # django_forge/** already covers the template tree.
     paths:
       - "django_forge/**"
       - "pyproject.toml"
       - "uv.lock"
+      - "MANIFEST.in"
+      - "README.md"
       - "tests/**"
+      - "site/**"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
@@ -16,7 +20,10 @@ on:
       - "django_forge/**"
       - "pyproject.toml"
       - "uv.lock"
+      - "MANIFEST.in"
+      - "README.md"
       - "tests/**"
+      - "site/**"
       - ".github/workflows/ci.yml"
 
 concurrency:
@@ -31,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +54,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
+
+      - name: Templates ship LF line endings
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if grep -rIl $'\r' django_forge/templates; then
+            echo "CRLF line endings found in the files listed above."
+            exit 1
+          fi
 
       - name: Lint with ruff
         run: uv run ruff check .
@@ -56,7 +72,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check with ty
-        run: uv run ty check django_forge
+        run: uv run ty check django_forge tests
 
   test-install:
     name: Test install (Python ${{ matrix.python-version }})
@@ -65,7 +81,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -83,17 +99,17 @@ jobs:
       - name: Install package
         run: uv tool install .
 
-      - name: Verify forge command
-        run: forge --help
+      - name: Verify forge-django command
+        run: forge-django --help
 
-      - name: Verify forge version
-        run: forge --version
+      - name: Verify forge-django version
+        run: forge-django --version
 
-      - name: Verify forge commands exist
+      - name: Verify forge-django commands exist
         run: |
-          forge start --help
-          forge list --help
-          forge add --help
+          forge-django start --help
+          forge-django list --help
+          forge-django add --help
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -102,7 +118,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -118,7 +134,154 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Run tests
         run: uv run pytest
+
+  e2e-scaffold:
+    name: E2E scaffold (${{ matrix.framework }} / ${{ matrix.db }} / py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [drf, ninja, pure]
+        db: [sqlite, postgres]
+        python-version: ["3.12", "3.14"]
+    # GitHub cannot start services conditionally, so every cell gets a
+    # postgres container; sqlite cells simply ignore it.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forge
+          POSTGRES_DB: forge_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Point the scaffold at the right database
+        run: echo "DATABASE_URL=${{ matrix.db == 'postgres' && 'postgresql://forge:forge@127.0.0.1:5432/forge_e2e' || format('sqlite:///{0}/e2e.sqlite3', runner.temp) }}" >> "$GITHUB_ENV"
+
+      - name: Install forge-django
+        run: uv tool install .
+
+      - name: Scaffold demo into RUNNER_TEMP
+        working-directory: ${{ runner.temp }}
+        run: forge-django start demo --no-input --api ${{ matrix.framework }} --db ${{ matrix.db }}
+
+      - name: Lint the generated project
+        working-directory: ${{ runner.temp }}/demo
+        run: make lint
+
+      - name: Type check the generated project
+        working-directory: ${{ runner.temp }}/demo
+        run: make typecheck
+
+      - name: Test the generated project
+        working-directory: ${{ runner.temp }}/demo
+        run: make test
+
+      - name: Deploy check (prod settings)
+        working-directory: ${{ runner.temp }}/demo
+        run: uv run python manage.py check --settings=config.settings.prod
+
+      - name: actionlint the rendered workflow
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/actionlint.tar.gz" "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" "$RUNNER_TEMP/demo/.github/workflows/ci.yml"
+
+  package:
+    name: Package (build + twine + wheel contents + sdist test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Twine check
+        run: uvx twine check dist/*
+
+      - name: Wheel contains every tracked template
+        run: |
+          python3 - <<'EOF'
+          import glob
+          import subprocess
+          import sys
+          import zipfile
+
+          tracked = subprocess.run(
+              ["git", "ls-files", "django_forge/templates"],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+          wheel = glob.glob("dist/*.whl")[0]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          missing = [f for f in tracked if f not in names]
+          if missing:
+              print("missing from wheel:")
+              for m in missing:
+                  print(f"  {m}")
+              sys.exit(1)
+          print(f"wheel ok: all {len(tracked)} tracked templates present")
+          EOF
+
+      - name: Test from the unpacked sdist
+        run: |
+          rm -rf /tmp/sdist
+          mkdir -p /tmp/sdist
+          tar -xzf dist/*.tar.gz -C /tmp/sdist
+          cd /tmp/sdist/*/
+          uv sync
+          uv run pytest -q
+
+  site:
+    name: Site (svelte-check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install site dependencies
+        run: npm ci
+
+      - name: svelte-check (fail on warnings)
+        run: npm run check

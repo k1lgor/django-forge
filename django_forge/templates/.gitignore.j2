@@ -33,3 +33,9 @@ Thumbs.db
 local.sqlite3
 media/
 backups/
+
+# CLI per-command failure logs (paths printed when a command fails)
+.forge-logs/
+
+# .forge-manifest.json is intentionally TRACKED (not ignored): the ownership
+# ledger must survive clones — the pristine-guard policy uses it as baseline.

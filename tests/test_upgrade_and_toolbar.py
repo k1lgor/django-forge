@@ -91,7 +91,7 @@ def test_upgrade_non_forge_project(tmp_path: Path) -> None:
     """forge upgrade outside a forge project shows error."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["upgrade"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
@@ -118,7 +118,7 @@ def test_upgrade_with_forge_project(_mock_install, tmp_path: Path) -> None:
     (tmp_path / "config" / "settings" / "base.py").write_text("# old base")
     os.chdir(tmp_path)
 
-    result = runner.invoke(app, ["upgrade"], input="Y\n")
+    result = runner.invoke(app, ["upgrade"], input="Y\nY\n")
     assert result.exit_code == 0, str(result.exception)
     assert "Upgraded" in result.stdout or "upgraded" in result.stdout
 
@@ -134,7 +134,8 @@ def test_upgrade_declined_leaves_files(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
 
     result = runner.invoke(app, ["upgrade"], input="N\n")
-    assert result.exit_code == 0
+    # Refusing the overwrite is a failure branch — exit 1 (entry 38).
+    assert result.exit_code == 1
     assert (tmp_path / "manage.py").read_text() == "# OLD", "File should remain unchanged"
 
 

@@ -2,11 +2,11 @@
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.base
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -31,14 +31,14 @@
     environment:
       POSTGRES_DB: {{ project_slug }}
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (copy .env.example to .env)}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 {%- endif %}
 
 {%- if has_celery or has_cache %}
@@ -46,7 +46,7 @@
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -61,8 +61,8 @@
     image: axllent/mailpit:v1
     restart: unless-stopped
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
     environment:
       MP_SMTP_AUTH: "false"
       MP_SMTP_TLS: "false"

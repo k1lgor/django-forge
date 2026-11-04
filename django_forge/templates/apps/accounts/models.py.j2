@@ -1,5 +1,7 @@
 """Custom User model with email-based authentication."""
 
+from typing import ClassVar
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 {%- if has_audit %}
@@ -29,12 +31,12 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS: ClassVar[list[str]] = []  # ty: ignore[invalid-attribute-override]
 
     objects = UserManager()
 {%- if has_audit %}
-    history = HistoricalRecords()
+    history: ClassVar[HistoricalRecords] = HistoricalRecords()
 {%- endif %}
 
     def __str__(self) -> str:
-        return self.email
+        return str(self.email)

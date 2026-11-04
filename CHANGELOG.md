@@ -5,6 +5,72 @@ All notable changes to django-forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — Unreleased
+
+### Added
+
+- **CI verifies the artifact, not the source** — a scaffold-and-run e2e job per
+  framework × database combination (Python 3.12 and 3.14 legs) that runs the
+  generated project's own `make lint` / `make typecheck` / `make test` inside
+  the scaffold, `actionlint` over the rendered `.github/workflows/ci.yml`, a
+  package job (`uv build`, `twine check`, a wheel-content assertion and an
+  sdist unpack-and-test), and a tag-triggered release workflow that publishes
+  to PyPI with trusted publishing (OIDC, no long-lived token).
+- **Cross-artifact parity tests** — the distribution name, install command,
+  repository URL and version must agree across `pyproject.toml`, the README,
+  the landing page and the generated templates.
+
+### Changed
+
+- **The command is now `forge-django`** — `django-forge` has been owned on PyPI
+  by an unrelated project since 2013 and PyPI names are permanent, so the
+  package publishes as `forge-django` with a matching console script.
+  **Migration:** replace `forge …` with `forge-django …` in your scripts, CI
+  jobs, aliases and docs — `forge start myproject` → `forge-django start
+  myproject`, `forge add docker` → `forge-django add docker`, `forge upgrade` →
+  `forge-django upgrade`. There is no compatibility shim; existing scripts must
+  be updated once.
+- **CLI failures exit non-zero** — every failure path in `start`, `add`,
+  `upgrade` and the installer now exits `1` (usage errors stay at `2`);
+  previously every error path exited `0`, so a broken run looked successful to
+  a pipeline. Failed subprocess output is written to a log file whose path is
+  printed instead of a 300-character stderr truncation, and `--verbose` mirrors
+  output live.
+- **Dev tooling moved to `[dependency-groups] dev`** (PEP 735) in this
+  repository and in generated projects, so plain `uv sync` installs pytest,
+  ruff and ty — no `uv sync --all-extras --dev` variant to remember.
+- **Packaging metadata** — explicit `[build-system]` (setuptools backend), SPDX
+  `license = "MIT"`, a Python 3.14 classifier, Changelog/Issues/Website project
+  URLs, and `__version__` read from installed package metadata instead of a
+  hand-copied literal.
+
+### Fixed
+
+- **The default scaffold boots** — a stray Jinja trim marker no longer comments
+  out `database_url`, so `manage.py` starts after `forge-django start` instead
+  of raising `AttributeError` (the CLI also reported exit code 0 while
+  crashing).
+- **The generated GitHub Actions workflow is valid** — `${{ … }}` expressions
+  are emitted literally, so GitHub's expression parser accepts the file.
+- **Selecting PostgreSQL reaches PostgreSQL** — the generated settings use a
+  `postgresql://` default and a maintained `DATABASE_URL` parser that accepts
+  both `postgres://` and `postgresql://`; an unparsable URL fails loudly
+  instead of silently falling back to SQLite.
+- **Production settings are actually selected** — `config.settings.prod` is
+  wired into the Dockerfile, `compose.yaml`, `.env.example` and the generated
+  README, and the post-install deploy check runs against it with a fail-level
+  classification instead of returning success unconditionally.
+- **A fresh project passes its own gates** — the star imports that failed
+  `make lint` are explicit, the Django pin moves to the supported
+  `django~=6.1.0` line, and `django-ninja-jwt` pins a range that resolves, so
+  `make lint` / `make typecheck` / `make test` pass straight after scaffolding.
+
+### Removed
+
+- **Sentry claims** — `SENTRY_DSN` leaves `.env.example`, both READMEs and the
+  `forge-django list` output; the templates never shipped `sentry-sdk`, so the
+  configuration only ever suggested a feature that was not there.
+
 ## [0.3.0] — 2026-08-10
 
 ### Added
@@ -39,6 +105,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   settings moved out of base's import-time `if not DEBUG:` block into `prod.py`;
   `ALLOWED_HOSTS` is env-driven; removed `SECURE_BROWSER_XSS_FILTER` (gone in
   Django 5.0).
+  *(Corrected in 0.4.0: this claim was premature — nothing selected
+  `config.settings.prod`, so documented deployments still ran `DEBUG = True`
+  until 0.4.0 wired prod into the deployment surfaces.)*
 - **Generated projects install and boot** — `urls.py` no longer imports
   `debug_toolbar` unconditionally (dev extra), the Docker image's gunicorn is
   declared as a dependency, and `.env` is gitignored while `.env.example` stays
@@ -172,5 +241,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Upgraded type checker from `mypy` to `ty` (Astral) — faster, ecosystem-native with `uv` + `ruff`
 
+[0.4.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.4.0
 [0.3.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.3.0
 [0.1.0]: https://github.com/k1lgor/django-forge/releases/tag/v0.1.0

@@ -1,0 +1,126 @@
+{
+  "cases": [
+    {
+      "state": {
+        "project_name": "Alpha Project"
+      },
+      "context": {
+        "project_name": "Alpha Project",
+        "project_slug": "Alpha_Project",
+        "secret_key": "",
+        "api": "drf",
+        "db": "postgres",
+        "layers": [],
+        "use_drf": true,
+        "use_ninja": false,
+        "use_pure_django": false,
+        "forge_version": "0.4.0",
+        "has_docker": false,
+        "has_celery": false,
+        "has_email": false,
+        "has_cache": false,
+        "has_social": false,
+        "has_storage": false,
+        "has_healthcheck": false,
+        "has_audit": false,
+        "has_backup": false,
+        "has_seed": false,
+        "has_preflight": false
+      }
+    },
+    {
+      "state": {
+        "project_name": "Beta Site",
+        "project_slug": "beta-site",
+        "api": "ninja",
+        "db": "sqlite",
+        "layers": [
+          "docker",
+          "celery",
+          "email",
+          "cache",
+          "social",
+          "storage",
+          "healthcheck",
+          "audit",
+          "backup",
+          "seed",
+          "preflight"
+        ]
+      },
+      "context": {
+        "project_name": "Beta Site",
+        "project_slug": "beta-site",
+        "secret_key": "",
+        "api": "ninja",
+        "db": "sqlite",
+        "layers": [
+          "docker",
+          "celery",
+          "email",
+          "cache",
+          "social",
+          "storage",
+          "healthcheck",
+          "audit",
+          "backup",
+          "seed",
+          "preflight"
+        ],
+        "use_drf": false,
+        "use_ninja": true,
+        "use_pure_django": false,
+        "forge_version": "0.4.0",
+        "has_docker": true,
+        "has_celery": true,
+        "has_email": true,
+        "has_cache": true,
+        "has_social": true,
+        "has_storage": true,
+        "has_healthcheck": true,
+        "has_audit": true,
+        "has_backup": true,
+        "has_seed": true,
+        "has_preflight": true
+      }
+    },
+    {
+      "state": {
+        "project_name": "Gamma",
+        "api": "pure",
+        "layers": [
+          "docker",
+          "celery",
+          "seed"
+        ]
+      },
+      "context": {
+        "project_name": "Gamma",
+        "project_slug": "Gamma",
+        "secret_key": "",
+        "api": "pure",
+        "db": "postgres",
+        "layers": [
+          "docker",
+          "celery",
+          "seed"
+        ],
+        "use_drf": false,
+        "use_ninja": false,
+        "use_pure_django": true,
+        "forge_version": "0.4.0",
+        "has_docker": true,
+        "has_celery": true,
+        "has_email": false,
+        "has_cache": false,
+        "has_social": false,
+        "has_storage": false,
+        "has_healthcheck": false,
+        "has_audit": false,
+        "has_backup": false,
+        "has_seed": true,
+        "has_preflight": false
+      }
+    }
+  ]
+}

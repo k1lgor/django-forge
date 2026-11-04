@@ -2,7 +2,7 @@
 // Every artifact path below is a real file the CLI's templates generate.
 // Verified against django_forge/templates/*.j2.
 
-export const FORGE_VERSION = "0.3.0";
+export const FORGE_VERSION = "0.4.0";
 
 export const FRAMEWORKS = [
   {
@@ -67,7 +67,7 @@ export const LAYERS = [
       { path: "config/celery.py", lines: ['app = Celery("{{ project_slug }}")', 'app.config_from_object("django.conf:settings", namespace="CELERY")'] },
       { path: "apps/accounts/tasks.py", lines: ["@shared_task", "def add(x: int, y: int) -> int:"] },
     ],
-    dep: "celery~=5.4.0, redis>=5.0",
+    dep: "celery~=5.6.0, redis>=5.0",
   },
   {
     id: "email",
@@ -159,7 +159,7 @@ export const LAYERS = [
 // Files every project gets, in forge order.
 export const CORE_FILES = [
   { path: "manage.py", lines: ['os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.base")'] },
-  { path: "pyproject.toml", lines: ["dependencies = [", '    "django~=5.1.0",'] },
+  { path: "pyproject.toml", lines: ["dependencies = [", '    "django~=6.1.0",'] },
   { path: "config/__init__.py", lines: ["# config package"] },
   { path: "config/settings/base.py", lines: ["SECRET_KEY = settings.django_secret_key", 'AUTH_USER_MODEL = "accounts.User"', 'ACCOUNT_LOGIN_METHODS = {"email"}'] },
   { path: "config/settings/dev.py", lines: ["DEBUG = True"] },
@@ -185,6 +185,9 @@ export const CORE_FILES = [
 ];
 
 // Build the ordered file set for a chosen configuration.
+/**
+ * @param {{ framework: string, database: string, layers: string[] }} config chosen stack
+ */
 export function buildFileSet({ framework, database, layers }) {
   const fw = FRAMEWORKS.find((f) => f.id === framework) ?? FRAMEWORKS[0];
   const files = CORE_FILES.map((f) => ({ ...f, source: "core" }));
@@ -206,7 +209,7 @@ export const SECURITY_CHECKS = [
   },
   {
     claim: "Production security is real, not decorative",
-    detail: "prod.py sets DEBUG=False, SECURE_SSL_REDIRECT, secure cookies, HSTS and a strict referrer policy — after the import-order bug that once swallowed them was fixed.",
+    detail: "prod.py sets DEBUG=False, SECURE_SSL_REDIRECT, secure cookies, HSTS and a strict referrer policy — every line visible in config/settings/prod.py.",
   },
   {
     claim: "Your .env can't be committed",
@@ -267,5 +270,5 @@ export const BOOT_LINES = [
   { kind: "prompt", text: "PRESS START", color: "yellow" },
 ];
 
-export const INSTALL_CMD = "uv tool install django-forge";
-export const RUN_CMD = "forge start myproject";
+export const INSTALL_CMD = "uv tool install forge-django";
+export const RUN_CMD = "forge-django start myproject";

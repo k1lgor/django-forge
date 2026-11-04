@@ -1,6 +1,6 @@
 # {{ project_name }}
 
-> Scaffolded by [django-forge](https://github.com/plamen/django-forge)
+> Scaffolded by [django-forge](https://github.com/k1lgor/django-forge)
 
 {{ project_name }} is a Django project with modern best practices out of the box.
 
@@ -38,8 +38,8 @@ uv run manage.py runserver
 
 ## Tech stack
 
-- **Framework:** Django 5.1+
-- **Python:** 3.12+
+- **Framework:** Django 6.1
+- **Python:** 3.12–3.14
 - **Package manager:** uv
 - **Linting:** ruff (linter + formatter)
 - **Type checking:** ty (Astral)
@@ -63,19 +63,25 @@ Key variables:
 |---|---|
 | `DJANGO_SECRET_KEY` | Secret key for cryptographic signing |
 | `DJANGO_DEBUG` | Set to `false` in production |
-| `DATABASE_URL` | Database URL (SQLite default, PostgreSQL in production) |
+| `DATABASE_URL` | Database URL (postgresql://… written by the scaffold; unset ⇒ SQLite) |
 | `CORS_ALLOWED_ORIGINS` | Allowed CORS origins (comma-separated) |
-| `SENTRY_DSN` | Sentry DSN (optional — leave empty to disable) |
+
+## Project files
+
+`.forge-manifest.json` records what the CLI generated and is **tracked in git
+on purpose** — the ownership ledger must survive clones; don't delete it.
+`.env` is the only place the real `DJANGO_SECRET_KEY` lives (never commit it).
 
 ## Deployment
 
-1. Set `DJANGO_DEBUG=false` in production
-2. Set `DJANGO_SECRET_KEY` to a secure random value
-3. Configure `DATABASE_URL` for PostgreSQL
-4. Run `uv run manage.py collectstatic` for static files
-5. Use `uv run uvicorn --workers 4 config.asgi:application`
+1. Set `DJANGO_SETTINGS_MODULE=config.settings.prod` (Docker/Compose already set it)
+2. Set `DJANGO_DEBUG=false` in production
+3. Set `DJANGO_SECRET_KEY` to a secure random value
+4. Configure `DATABASE_URL` for PostgreSQL
+5. Run `uv run manage.py collectstatic` for static files
+6. Use `uv run uvicorn --workers 4 config.asgi:application`
 {% if has_healthcheck %}
-6. Health checks: `GET /healthz/` returns 200 when DB{% if has_cache or has_celery %}, cache,{% endif %}{% if has_celery %} and broker{% endif %} checks pass
+7. Health checks: `GET /healthz/` returns 200 when DB{% if has_cache or has_celery %}, cache,{% endif %}{% if has_celery %} and broker{% endif %} checks pass
 {% endif %}
 {% if has_backup %}
 
@@ -101,7 +107,7 @@ Test the restore drill into a scratch database before you need it.
 ## Dev data
 
 ```bash
-uv sync --extra dev    # factory-boy lives in the dev extras
+uv sync               # dev tooling (dependency groups) installs factory-boy
 make seed              # create 10 sample users (factory-based)
 ```
 
@@ -118,3 +124,16 @@ make preflight    # check --deploy + pending migrations + migrate --check
 Run this before pushing — it fails loudly if the deploy check, pending
 migrations, or migration state is broken.
 {% endif %}
+
+## Upgrade
+
+Refresh the tool, then let it re-render the files it owns:
+
+```bash
+uv tool install --upgrade forge-django
+forge-django upgrade
+```
+
+> **Command rename (0.4):** the tool is now `forge-django`. Replace any
+> `forge …` scripts, aliases or CI steps with `forge-django …`; generated
+> project files are unaffected by the rename.

@@ -1,6 +1,7 @@
-"""``forge list`` command — show available options."""
+"""``forge-django list`` command — show available options."""
 
 from django_forge.cli.console import console
+from django_forge.registry import LAYERS
 
 
 def list_options() -> None:
@@ -63,23 +64,13 @@ def _print_optional_layers() -> None:
     console.print("  [forge.primary]Available Optional Layers[/]")
     console.print()
 
-    layers = [
-        ("Docker", "Multi-stage Dockerfile + Docker Compose (PostgreSQL, app)"),
-        ("Celery", "Background task queue (requires Redis)"),
-        ("Email", "Mailpit (dev) / SMTP (prod) configuration"),
-        ("Caching", "Redis cache backend (django.core.cache.backends.redis)"),
-        ("Social Auth", "Google + GitHub OAuth via django-allauth"),
-        ("S3 Storage", "django-storages[s3] — static + media files on S3/MinIO"),
-        ("Health Check", "django-health-check — /healthz for load balancers"),
-        ("Audit Trail", "django-simple-history — record every model change"),
-        ("Backup", "django-dbbackup — nightly DB dumps + restore drill"),
-        ("Seed Data", "factory-boy dev data + manage.py seed command"),
-        ("Preflight", "manage.py preflight — deploy check before pushing"),
-    ]
-
-    for name, desc in layers:
-        console.print(f"  [forge.label]{name}[/]")
-        console.print(f"    [forge.muted]{desc}[/]")
+    # Registry-driven rendering (design entry 32): label with its slug,
+    # then the description.
+    for layer in LAYERS:
+        console.print(
+            f"  [forge.label]{layer.label}[/]  [forge.muted](forge-django add {layer.slug})[/]"
+        )
+        console.print(f"    [forge.muted]{layer.description}[/]")
         console.print()
 
 
@@ -96,8 +87,8 @@ def _print_core_layers() -> None:
         ("Database", "PostgreSQL (prod) / SQLite (dev), migration defaults"),
         ("Async", "ASGI via uvicorn, async views, async ORM support"),
         ("CI/CD", "GitHub Actions: lint, type-check, test, deploy-check"),
-        ("Admin", "Custom User admin, admin sortable, django-unsign"),
-        ("Logging", "Structured logging, Sentry integration (DSN-gated)"),
+        ("Admin", "Custom User admin"),
+        ("Logging", "Structured logging"),
         ("Static/media", "WhiteNoise for static files, django-storages ready"),
         ("Security", "CORS headers, security middleware, env-based secrets"),
     ]

@@ -186,7 +186,7 @@ def test_example_has_django_db_marker() -> None:
 def test_pyproject_toml_all_options_toml_valid() -> None:
     """pyproject.toml renders valid TOML even with all options enabled."""
     try:
-        import tomllib as _toml
+        import tomllib as _toml  # ty: ignore[unresolved-import]
     except ImportError:
         import tomli as _toml  # type: ignore[no-redef]  # Python 3.10
 
@@ -226,3 +226,57 @@ def test_pytest_config_has_correct_settings_module() -> None:
         # Check conftest.py
         conftest_content = (target / "tests" / "conftest.py").read_text()
         assert "config.settings.base" in conftest_content
+
+
+# ---------------------------------------------------------------------------
+# Generated pyproject contract (django-forge 0.4, design entry 42)
+# ---------------------------------------------------------------------------
+
+
+def _load_pyproject(target: Path) -> dict:
+    try:
+        import tomllib as _toml  # ty: ignore[unresolved-import]
+    except ImportError:
+        import tomli as _toml  # type: ignore[no-redef]
+    return _toml.loads((target / "pyproject.toml").read_text())
+
+
+def test_pyproject_pins_and_bounds() -> None:
+    """django~=6.1.0, requires-python bounds and the [dependency-groups] dev group."""
+    renderer = Renderer(PROJECT_TEMPLATES)
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp)
+        renderer.render_project(MINIMAL_CONTEXT, target)
+        data = _load_pyproject(target)
+        assert "django~=6.1.0" in data["project"]["dependencies"]
+        assert data["project"]["requires-python"] == ">=3.12,<3.15"
+        # G5/G6: plain `uv sync` installs a dependency group, not an extra.
+        assert "dev" in data["dependency-groups"]
+        assert "optional-dependencies" not in data["project"]
+
+
+def test_pyproject_drops_pytest_env() -> None:
+    """No pytest `env` key and no pytest-env — the ini option does the job."""
+    renderer = Renderer(PROJECT_TEMPLATES)
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp)
+        renderer.render_project(MINIMAL_CONTEXT, target)
+        content = (target / "pyproject.toml").read_text()
+        data = _load_pyproject(target)
+        ini_options = data["tool"]["pytest"]["ini_options"]
+        assert "env" not in ini_options
+        assert ini_options["DJANGO_SETTINGS_MODULE"] == "config.settings.base"
+        assert "pytest-env" not in content
+
+
+def test_pyproject_ninja_cell_pins_ninja_jwt() -> None:
+    """The Ninja cell pins django-ninja-jwt to a range that exists on PyPI."""
+    renderer = Renderer(PROJECT_TEMPLATES)
+    ctx = dict(MINIMAL_CONTEXT)
+    ctx.update(api="ninja", use_ninja=True, use_pure_django=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp)
+        renderer.render_project(ctx, target)
+        data = _load_pyproject(target)
+        assert "django-ninja-jwt>=5.1,<6" in data["project"]["dependencies"]
+        assert "django-ninja~=1.7.0" in data["project"]["dependencies"]

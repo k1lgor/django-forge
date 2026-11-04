@@ -1,6 +1,84 @@
 """Production settings for {{ project_name }}."""
 
-from config.settings.base import *  # noqa: F403, F401
+from config.settings.base import (
+    ACCOUNT_LOGIN_METHODS,
+    ACCOUNT_SIGNUP_FIELDS,
+    ASGI_APPLICATION,
+    AUTH_USER_MODEL,
+    AUTHENTICATION_BACKENDS,
+    BASE_DIR,
+{% if has_celery or has_cache %}    CACHES,
+{% endif %}{% if has_celery %}    CELERY_ACCEPT_CONTENT,
+    CELERY_BROKER_URL,
+    CELERY_RESULT_BACKEND,
+    CELERY_TASK_SERIALIZER,
+{% endif %}    CORS_ALLOWED_ORIGINS,
+{% if has_backup %}    DBBACKUP_STORAGE,
+    DBBACKUP_STORAGE_OPTIONS,
+{% endif %}    DEFAULT_AUTO_FIELD,
+{% if has_email %}    EMAIL_HOST,
+    EMAIL_HOST_PASSWORD,
+    EMAIL_HOST_USER,
+    EMAIL_USE_TLS,
+{% endif %}    INSTALLED_APPS,
+{% if has_storage %}    MEDIA_URL,
+{% else %}    MEDIA_ROOT,
+    MEDIA_URL,
+{% endif %}    MIDDLEWARE,
+    ROOT_URLCONF,
+    SECRET_KEY,
+    SITE_ID,
+{% if has_social %}    SOCIALACCOUNT_PROVIDERS,
+{% endif %}    STATIC_ROOT,
+    STATICFILES_DIRS,
+    STORAGES,
+    TEMPLATES,
+    TIME_ZONE,
+    USE_I18N,
+    USE_TZ,
+    WSGI_APPLICATION,
+    settings,
+)
+
+__all__ = [
+    ACCOUNT_LOGIN_METHODS,
+    ACCOUNT_SIGNUP_FIELDS,
+    ASGI_APPLICATION,
+    AUTHENTICATION_BACKENDS,
+    AUTH_USER_MODEL,
+    BASE_DIR,
+{% if has_celery or has_cache %}    CACHES,
+{% endif %}{% if has_celery %}    CELERY_ACCEPT_CONTENT,
+    CELERY_BROKER_URL,
+    CELERY_RESULT_BACKEND,
+    CELERY_TASK_SERIALIZER,
+{% endif %}    CORS_ALLOWED_ORIGINS,
+{% if has_backup %}    DBBACKUP_STORAGE,
+    DBBACKUP_STORAGE_OPTIONS,
+{% endif %}    DEFAULT_AUTO_FIELD,
+{% if has_email %}    EMAIL_HOST,
+    EMAIL_HOST_PASSWORD,
+    EMAIL_HOST_USER,
+    EMAIL_USE_TLS,
+{% endif %}    INSTALLED_APPS,
+{% if has_storage %}    MEDIA_URL,
+{% else %}    MEDIA_ROOT,
+    MEDIA_URL,
+{% endif %}    MIDDLEWARE,
+    ROOT_URLCONF,
+    SECRET_KEY,
+    SITE_ID,
+{% if has_social %}    SOCIALACCOUNT_PROVIDERS,
+{% endif %}    STATICFILES_DIRS,
+    STATIC_ROOT,
+    STORAGES,
+    TEMPLATES,
+    TIME_ZONE,
+    USE_I18N,
+    USE_TZ,
+    WSGI_APPLICATION,
+    settings,
+]
 
 # Debug disabled for production
 DEBUG = False
@@ -10,12 +88,11 @@ DEBUG = False
 # real domains in production, e.g. ALLOWED_HOSTS=example.com,api.example.com.
 ALLOWED_HOSTS = settings.allowed_hosts
 
-{%- if has_email %}# SMTP email backend for production
+{% if has_email %}# SMTP email backend for production
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_SSL = True
 EMAIL_PORT = 465
 {% endif %}
-
 # Production security settings.
 # These live in prod.py (not base.py) because base.py is imported with
 # DEBUG=True by default — an import-time DEBUG gate there would evaluate

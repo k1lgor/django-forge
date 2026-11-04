@@ -6,9 +6,10 @@ then a summary confirmation.
 
 from rich.prompt import Confirm, Prompt
 
-from django_forge import __version__ as _forge_version
 from django_forge.cli.console import console
 from django_forge.cli.prefs import load_prefs
+from django_forge.project import build_context
+from django_forge.registry import LAYERS
 
 _FRAMEWORKS = {
     "1": ("DRF", "Django REST Framework - battle-tested, large ecosystem"),
@@ -24,56 +25,10 @@ _DATABASES = {
     "2": ("SQLite only", "Simpler setup, no PostgreSQL dependency"),
 }
 
-_LAYERS = {
-    "1": ("Docker", "Multi-stage build + Compose"),
-    "2": ("Celery", "Background task queue (Redis required)"),
-    "3": ("Email", "Mailpit (dev) / SMTP (prod)"),
-    "4": ("Caching", "Redis cache backend"),
-    "5": ("Social Auth", "Google + GitHub OAuth via allauth"),
-    "6": ("S3 Storage", "S3/MinIO static + media file storage"),
-    "7": ("Health Check", "/healthz endpoint for load balancers"),
-    "8": ("Audit Trail", "Record every model change (django-simple-history)"),
-    "9": ("Backup", "Nightly DB backups (django-dbbackup)"),
-    "10": ("Seed Data", "Factory-based dev data seeding"),
-    "11": ("Preflight", "Pre-deploy safety checks command"),
-}
-
-_LAYER_KEY_MAP = {
-    "1": "docker",
-    "2": "celery",
-    "3": "email",
-    "4": "cache",
-    "5": "social",
-    "6": "storage",
-    "7": "healthcheck",
-    "8": "audit",
-    "9": "backup",
-    "10": "seed",
-    "11": "preflight",
-}
-
-_BASE_CONTEXT = {
-    "project_name": "",
-    "project_slug": "",
-    "secret_key": "",
-    "api": "pure",
-    "db": "sqlite",
-    "layers": [],
-    "use_drf": False,
-    "use_ninja": False,
-    "use_pure_django": True,
-    "has_docker": False,
-    "has_celery": False,
-    "has_email": False,
-    "has_cache": False,
-    "has_social": False,
-    "has_storage": False,
-    "has_healthcheck": False,
-    "has_audit": False,
-    "has_backup": False,
-    "has_seed": False,
-    "has_preflight": False,
-}
+# Layer menu derived from the single registry (design entry 35): menu keys,
+# labels and descriptions all come from ``django_forge.registry.LAYERS``.
+_LAYERS = {layer.menu_key: (layer.label, layer.description) for layer in LAYERS}
+_LAYER_KEY_MAP = {layer.menu_key: layer.id for layer in LAYERS}
 
 
 def confirm_scaffold(
@@ -95,8 +50,17 @@ def confirm_scaffold(
     Returns:
         The context dict for the renderer, or ``None`` if the user declined.
     """
-    cached = load_prefs()
+    if no_input:
+        # Decision 2 / entry 27: --no-input never reads the prefs cache —
+        # fixed defaults, overridden by whatever options the caller passed.
+        return _build_context(
+            project_name,
+            api=api or "drf",
+            db=db or "postgres",
+            layers=list(layers or []),
+        )
 
+    cached = load_prefs()
     if api is None:
         api = cached["api"]
     if db is None:
@@ -104,17 +68,9 @@ def confirm_scaffold(
     if layers is None:
         layers = cached["layers"]
 
-    assert api is not None
-    assert db is not None
-    assert layers is not None
-
-    if no_input:
-        return _build_context(
-            project_name,
-            api=api,
-            db=db,
-            layers=list(layers),
-        )
+    if api is None or db is None or layers is None:
+        console.print("  [forge.error]Could not determine scaffold defaults.[/]")
+        return None
 
     # Question 1: API Framework
     api = _ask_framework(default=api)
@@ -156,29 +112,10 @@ def _build_context(
     db: str,
     layers: list[str],
 ) -> dict:
-    """Build the scaffold context dict from raw values."""
-    context = dict(_BASE_CONTEXT)
-    context["project_name"] = project_name
-    context["project_slug"] = project_name.replace("-", "_").replace(" ", "_")
-    context["api"] = api
-    context["db"] = db
-    context["layers"] = list(layers)
-    context["use_drf"] = api == "drf"
-    context["use_ninja"] = api == "ninja"
-    context["use_pure_django"] = api == "pure"
-    context["has_docker"] = "docker" in layers
-    context["has_celery"] = "celery" in layers
-    context["has_email"] = "email" in layers
-    context["has_cache"] = "cache" in layers
-    context["has_social"] = "social" in layers
-    context["has_storage"] = "storage" in layers
-    context["has_healthcheck"] = "healthcheck" in layers
-    context["has_audit"] = "audit" in layers
-    context["has_backup"] = "backup" in layers
-    context["has_seed"] = "seed" in layers
-    context["has_preflight"] = "preflight" in layers
-    context["forge_version"] = _forge_version
-    return context
+    """Build the scaffold context from raw values via the shared builder."""
+    return build_context(
+        {"project_name": project_name, "api": api, "db": db, "layers": list(layers)}
+    )
 
 
 def _ask_framework(default: str = "pure") -> str:
@@ -241,20 +178,25 @@ def _ask_layers(default: list[str] | None = None) -> list[str]:
         console.print(f"  [forge.label]{key}.[/] {indicator} {name}")
         console.print(f"     [forge.muted]{desc}[/]")
 
-    raw = Prompt.ask(
-        "  [forge.prompt]Select optional layers (comma-separated numbers, or 0 for none)[/]",
-        default="0",
+    default_numbers = (
+        ",".join(key for key, layer_id in _LAYER_KEY_MAP.items() if layer_id in (default or []))
+        or "0"
     )
 
-    selected: list[str] = []
-    for part in raw.split(","):
-        part = part.strip()
-        if part == "0" or not part:
-            continue
-        if part in _LAYER_KEY_MAP:
-            selected.append(_LAYER_KEY_MAP[part])
+    while True:
+        raw = Prompt.ask(
+            "  [forge.prompt]Select optional layers (comma-separated numbers, or 0 for none)[/]",
+            default=default_numbers,
+        )
+        parts = [part.strip() for part in raw.split(",") if part.strip()]
+        if all(part == "0" or part in _LAYER_KEY_MAP for part in parts):
+            break
+        console.print(
+            "  [forge.error]Invalid selection — use numbers 1-11"
+            " (comma-separated) or 0 for none.[/]"
+        )
 
-    return selected
+    return [_LAYER_KEY_MAP[part] for part in parts if part != "0"]
 
 
 def _api_label(api: str) -> str:

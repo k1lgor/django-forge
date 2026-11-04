@@ -42,17 +42,17 @@ def test_add_invalid_toml(tmp_path: Path) -> None:
     _write_forge_toml(tmp_path / ".forge.toml", "[forge\ninvalid")
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "docker"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Invalid" in result.stdout or "Not a forge" in result.stdout
 
 
 def test_add_empty_forge_section(tmp_path: Path) -> None:
-    """[forge] section with no keys is treated as not a forge project."""
+    """[forge] section with no keys is rejected with the concrete reason."""
     _write_forge_toml(tmp_path / ".forge.toml", "[forge]\n")
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "docker"])
-    assert result.exit_code == 0
-    assert "Not a forge project" in result.stdout
+    assert result.exit_code == 1
+    assert "Invalid .forge.toml" in result.stdout
 
 
 def test_add_no_layers_key(tmp_path: Path) -> None:
@@ -61,9 +61,9 @@ def test_add_no_layers_key(tmp_path: Path) -> None:
         tmp_path / ".forge.toml",
         '[forge]\napi = "drf"\ndb = "postgres"\n',
     )
-    from django_forge.cli.add import _detect_project
+    from django_forge.project import detect_project
 
-    context = _detect_project(tmp_path)
+    context = detect_project(tmp_path)
     assert context is not None
     assert context["layers"] == []
 
@@ -81,6 +81,7 @@ def test_add_already_installed_with_multiple_layers(tmp_path: Path) -> None:
     )
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "docker"])
+    assert result.exit_code == 1
     assert "already installed" in result.stdout
     # Celery should still be there
     import tomli
@@ -106,7 +107,7 @@ def test_e2e_start_then_add_docker(_mock_install, tmp_path: Path) -> None:
 
     # Step 2: forge add docker from project dir
     os.chdir(project)
-    r2 = runner.invoke(app, ["add", "docker"])
+    r2 = runner.invoke(app, ["add", "docker"], input="Y\n")
     assert r2.exit_code == 0, str(r2.exception)
 
     # Docker files should exist
@@ -148,7 +149,7 @@ def test_e2e_start_then_add_celery_then_add_email(_mock_install, tmp_path: Path)
 
 
 # ---------------------------------------------------------------------------
-# _build_add_context edge cases
+# build_context edge cases
 # ---------------------------------------------------------------------------
 
 
@@ -158,11 +159,11 @@ def test_build_add_context_unknown_api(tmp_path: Path) -> None:
         tmp_path / ".forge.toml",
         '[forge]\napi = "unknown"\ndb = "sqlite"\nlayers = []\n',
     )
-    from django_forge.cli.add import _build_add_context, _detect_project
+    from django_forge.project import build_context, detect_project
 
-    context = _detect_project(tmp_path)
-    assert context is not None
-    result = _build_add_context(context, "docker")
+    state = detect_project(tmp_path)
+    assert state is not None
+    result = build_context(state)
     assert result["api"] == "unknown"
     assert result["use_drf"] is False
     assert result["use_ninja"] is False
@@ -170,21 +171,24 @@ def test_build_add_context_unknown_api(tmp_path: Path) -> None:
 
 
 def test_build_add_context_duplicate_layers() -> None:
-    """Duplicate layers in input don't create duplicates in output."""
-    from django_forge.cli.add import _build_add_context
+    """Duplicate layers in state don't crash the context builder."""
+    from django_forge.project import build_context
 
-    context = _build_add_context(
-        {"api": "drf", "db": "postgres", "layers": ["docker", "docker"]},
-        "celery",
+    context = build_context(
+        {
+            "project_name": "dup",
+            "api": "drf",
+            "db": "postgres",
+            "layers": ["docker", "docker"],
+        },
     )
-    # The layers list has duplicate "docker". When set()-ified in
-    # _update_forge_toml they collapse. _build_add_context preserves
-    # the raw list — dedup happens in _update_forge_toml.
+    # The layers list has duplicate "docker". build_context preserves the raw
+    # list — dedup happens in project.update_layers (sorted(set(layers))).
     assert context["layers"].count("docker") == 2
 
 
 # ---------------------------------------------------------------------------
-# _update_forge_toml preserves extra sections
+# update_layers preserves extra sections
 # ---------------------------------------------------------------------------
 
 
@@ -194,16 +198,16 @@ def test_update_forge_toml_preserves_extra_sections(tmp_path: Path) -> None:
         tmp_path / ".forge.toml",
         '[forge]\napi = "drf"\ndb = "postgres"\nlayers = []\n\n[database]\nurl = "sqlite:///dev.db"\n',
     )
-    from django_forge.cli.add import _update_forge_toml
+    from django_forge.project import update_layers
 
-    _update_forge_toml(tmp_path / ".forge.toml", ["docker"])
+    update_layers(tmp_path / ".forge.toml", ["docker"])
     import tomli
 
     toml = tomli.loads((tmp_path / ".forge.toml").read_text())
-    # [database] section should be present (but manual TOML serialization
-    # currently drops it — this is a known limitation)
-    # For now, just check [forge] is updated
     assert "docker" in toml.get("forge", {}).get("layers", [])
+    # The textual patch touches only `layers` / `version` inside [forge]:
+    # other tables survive byte-for-byte (design entry 36, Alternative H).
+    assert toml["database"]["url"] == "sqlite:///dev.db"
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +235,8 @@ def test_add_celery_without_config_dir_is_ok(_mock_install, tmp_path: Path) -> N
         '[forge]\napi = "pure"\ndb = "sqlite"\nlayers = []\n',
     )
     os.chdir(tmp_path)
-    result = runner.invoke(app, ["add", "celery"])
+    # Y = accept overwriting the hand-written files the render would replace.
+    result = runner.invoke(app, ["add", "celery"], input="Y\n")
     # Should either work or handle gracefully
     assert result.exit_code == 0
 

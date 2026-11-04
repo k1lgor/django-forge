@@ -15,6 +15,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from django_forge.registry import LAYERS
+
+# The valid-layer whitelist is derived from the registry (all eleven layers)
+# rather than a hand-maintained subset.
+_VALID_LAYER_IDS = frozenset(layer.id for layer in LAYERS)
+
 
 def _prefs_file() -> Path:
     """Return the path to the preferences JSON file.
@@ -94,8 +100,7 @@ def load_prefs() -> dict[str, Any]:
         valid = [
             layer
             for layer in data["layers"]
-            if isinstance(layer, str)
-            and layer in ("docker", "celery", "email", "cache", "social", "storage")
+            if isinstance(layer, str) and layer in _VALID_LAYER_IDS
         ]
         result["layers"] = valid
 

@@ -164,19 +164,19 @@ def assert_valid_python(source: str, label: str) -> None:
     try:
         ast.parse(source)
     except SyntaxError as e:
-        pytest.fail(f"{label} produced invalid Python:\n{e}\n\n{source}")
+        pytest.fail(f"{label} produced invalid Python:\n{e}\n\n{source}")  # ty: ignore
 
 
 def assert_valid_toml(source: str, label: str) -> None:
     """Assert that *source* can be parsed as valid TOML (basic check)."""
     try:
-        import tomllib as _toml
+        import tomllib as _toml  # ty: ignore[unresolved-import]
     except ImportError:
         import tomli as _toml  # type: ignore[no-redef]
     try:
         _toml.loads(source)
     except Exception as e:
-        pytest.fail(f"{label} produced invalid TOML:\n{e}\n\n{source}")
+        pytest.fail(f"{label} produced invalid TOML:\n{e}\n\n{source}")  # ty: ignore
 
 
 def test_pyproject_toml_template(project_renderer: Renderer, pure_context: dict) -> None:
@@ -259,12 +259,18 @@ def test_accounts_apps_python_valid(project_renderer: Renderer, pure_context: di
 
 
 def test_pyproject_toml_has_dev_deps(project_renderer: Renderer, pure_context: dict) -> None:
-    """1.4.A — pyproject.toml has [project.optional-dependencies] dev section."""
+    """1.4.A — pyproject.toml has a [dependency-groups] dev section (G5).
+
+    0.4 moved the dev tooling off ``[project.optional-dependencies]``: plain
+    ``uv sync`` installs a dependency group by default, extras are opt-in.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp)
         project_renderer.render_project(pure_context, target)
         content = (target / "pyproject.toml").read_text()
-        assert "[project.optional-dependencies]" in content
+        assert "[dependency-groups]" in content
+        assert "dev = [" in content
+        assert "[project.optional-dependencies]" not in content
         assert "ruff>=" in content
         assert "ty>=" in content
         assert "pytest>=" in content
@@ -310,7 +316,12 @@ def test_pyproject_toml_has_pytest_config(project_renderer: Renderer, pure_conte
 
 
 def test_ci_workflow_valid_yaml(project_renderer: Renderer, pure_context: dict) -> None:
-    """1.4.F — .github/workflows/ci.yml is valid YAML."""
+    """1.4.F — .github/workflows/ci.yml is valid YAML.
+
+    Also pins the GitHub Actions expressions: Jinja must emit ``${{ … }}``
+    verbatim (the unit-level twin of the CI ``actionlint`` gate, design entry 41)
+    and no ``$}}`` residue may survive.
+    """
     import yaml as _yaml
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -318,7 +329,11 @@ def test_ci_workflow_valid_yaml(project_renderer: Renderer, pure_context: dict) 
         project_renderer.render_project(pure_context, target)
         output = target / ".github" / "workflows" / "ci.yml"
         assert output.exists()
-        _yaml.safe_load(output.read_text())
+        content = output.read_text()
+        _yaml.safe_load(content)
+        assert "${{ matrix.os }}" in content
+        assert "${{ github.workflow }}" in content
+        assert "$}}" not in content
 
 
 def test_pre_commit_config_valid_yaml(project_renderer: Renderer, pure_context: dict) -> None:
@@ -446,7 +461,11 @@ def test_auth_urls_python_valid_pure(project_renderer: Renderer, pure_context: d
 
 
 def test_auth_urls_python_valid_drf() -> None:
-    """1.5.K — urls.py for DRF context renders valid Python with viewset."""
+    """1.5.K — DRF cell: urls.py renders valid auth routes, api.py the viewset.
+
+    0.4 moved the DefaultRouter/ModelViewSet stubs out of ``urls.py`` into
+    ``apps/accounts/api.py`` (which exposes ``api_urls`` for ``config/urls.py``).
+    """
     renderer = Renderer(PROJECT_TEMPLATES)
     ctx = {
         "project_name": "testproj",
@@ -469,8 +488,13 @@ def test_auth_urls_python_valid_drf() -> None:
         assert output.exists()
         src = output.read_text()
         assert_valid_python(src, "apps/accounts/urls.py (DRF)")
-        assert "ModelViewSet" in src
-        assert "DefaultRouter" in src
+        assert "login/" in src
+        assert "DefaultRouter" not in src
+        api_output = target / "apps" / "accounts" / "api.py"
+        api_src = api_output.read_text()
+        assert_valid_python(api_src, "apps/accounts/api.py (DRF)")
+        assert "ModelViewSet" in api_src
+        assert "DefaultRouter" in api_src
 
 
 def test_auth_signals_python_valid(project_renderer: Renderer, pure_context: dict) -> None:
@@ -583,7 +607,7 @@ def test_rendered_file_structure(project_renderer: Renderer, pure_context: dict)
 def test_forge_toml_valid_toml(project_renderer: Renderer, pure_context: dict) -> None:
     """1.2.N — .forge.toml is valid TOML with [forge] section."""
     try:
-        import tomllib as _toml
+        import tomllib as _toml  # ty: ignore[unresolved-import]
     except ImportError:
         import tomli as _toml  # type: ignore[no-redef]
 

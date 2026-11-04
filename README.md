@@ -1,21 +1,21 @@
 # django-forge 🔨
 
 <p align="center">
-  <img src="site/public/hero.png" alt="django-forge logo">
+  <img src="https://raw.githubusercontent.com/k1lgor/django-forge/main/site/public/hero.png" alt="django-forge logo">
 </p>
 
 **Ask 3 questions. Get a production-ready Django project.**
 
-`forge` scaffolds complete, immediately runnable Django projects with
+`forge-django` scaffolds complete, immediately runnable Django projects with
 senior-architect best practices — custom User model, allauth auth,
-ruff + ty tooling, GitHub Actions CI/CD, and your choice of API
-framework, database, and 11 optional layers. All in under a minute.
+ruff + `ty` (Astral's type checker) tooling, GitHub Actions CI/CD, and your
+choice of API framework, database, and 11 optional layers. All in under a minute.
 
 ![CI](https://github.com/k1lgor/django-forge/actions/workflows/ci.yml/badge.svg)
 
 ```bash
-uv tool install django-forge
-forge start myproject
+uv tool install forge-django
+forge-django start myproject
 ```
 
 ## About this repository
@@ -34,19 +34,19 @@ site whenever `site/` changes. See [Repository layout](#repository-layout).
 ## Quick start
 
 ```bash
-uv tool install django-forge   # install the CLI
-forge start myproject          # answer 3 questions
+uv tool install forge-django   # install the CLI
+forge-django start myproject   # answer 3 questions
 cd myproject
 uv run manage.py runserver     # start developing
 ```
 
-`forge start` runs `uv sync`, creates migrations, migrates the database,
+`forge-django start` runs `uv sync`, creates migrations, migrates the database,
 and runs `check --deploy` — your project is runnable the moment the
 success banner prints.
 
 ## The wizard
 
-`forge` asks three questions and confirms your choices before generating
+`forge-django` asks three questions and confirms your choices before generating
 anything. Every option is listed below.
 
 ### 1 · API Framework
@@ -70,71 +70,90 @@ anything. Every option is listed below.
 |---|---|---|
 | 1 | Docker | Multi-stage build + Compose |
 | 2 | Celery | Background task queue (Redis required) |
-| 3 | Email | Mailpit (dev) / SMTP (prod) |
+| 3 | Email | Mailpit (a local SMTP test inbox, for dev) / SMTP (prod) |
 | 4 | Caching | Redis cache backend |
 | 5 | Social Auth | Google + GitHub OAuth via allauth |
-| 6 | S3 Storage | S3/MinIO static + media file storage |
+| 6 | S3 Storage | S3/MinIO (S3-compatible object storage) static + media files |
 | 7 | Health Check | `/healthz` endpoint for load balancers |
 | 8 | Audit Trail | Record every model change (django-simple-history) |
 | 9 | Backup | Nightly DB backups (django-dbbackup) |
 | 10 | Seed Data | Factory-based dev data seeding |
 | 11 | Preflight | Pre-deploy safety checks command |
 
-The wizard looks like this:
+The wizard looks like this — real output of `forge-django start myproject`
+(captured by declining the final confirmation, so no files are written):
 
 ```
-=== FORGE v0.3.0 - django project scaffolder ===
+=== FORGE v0.4.0 - django project scaffolder ===
 
   Forge your Django project:  myproject
 
-  ◆ API Framework
-  1. DRF       Django REST Framework - battle-tested
-  2. Ninja     Modern, type-hint native, ~5x faster
-  3. Pure      Templates + views, no API framework
-
-  ◆ Database
-  1. Postgres  Production (PostgreSQL) + dev (SQLite)
-  2. SQLite    Simpler, no PostgreSQL dependency
-
-  ◆ Optional Layers
-  1. Docker         Multi-stage build + Compose
-  2. Celery         Background task queue (Redis)
-  3. Email          Mailpit (dev) / SMTP (prod)
-  4. Caching        Redis cache backend
-  5. Social Auth    Google + GitHub OAuth via allauth
-  6. S3 Storage     S3/MinIO static + media file storage
-  7. Health Check   /healthz for load balancers
-  8. Audit Trail    Record every model change
-  9. Backup         Nightly DB dumps + restore drill
-  10. Seed Data     Factory-based dev data seeding
-  11. Preflight     Pre-deploy safety checks command
+  API Framework
+  1. DRF
+     Django REST Framework - battle-tested, large ecosystem
+  2. Django-Ninja
+     Modern, type-hint native, ~5x faster
+  3. Pure Django
+     Templates + views, no API framework
+  Which API framework? (1-3) (1):
+  Database
+  1. PostgreSQL (production) + SQLite (development)
+     Production-ready, SQLite for fast local dev
+  2. SQLite only
+     Simpler setup, no PostgreSQL dependency
+  Which database? (1-2) (1):
+  Optional Layers
+  1. ○ Docker
+     Multi-stage build + Compose
+  2. ○ Celery
+     Background task queue (Redis required)
+  3. ○ Email
+     Mailpit (dev) / SMTP (prod)
+  4. ○ Caching
+     Redis cache backend
+  5. ○ Social Auth
+     Google + GitHub OAuth via allauth
+  6. ○ S3 Storage
+     S3/MinIO static + media file storage
+  7. ○ Health Check
+     /healthz endpoint for load balancers
+  8. ○ Audit Trail
+     Record every model change (django-simple-history)
+  9. ○ Backup
+     Nightly DB dumps (django-dbbackup)
+  10. ○ Seed Data
+     Factory-based dev data seeding
+  11. ○ Preflight
+     Pre-deploy safety checks command
+  Select optional layers (comma-separated numbers, or 0 for none) (0):
+───────────────────────────────────────
 
   Project:   myproject
-  Framework: DRF
+  Framework: DRF - Django REST Framework
   Database:  PostgreSQL (prod) + SQLite (dev)
   Layers:    Docker, Celery
 
-  Looks good? [Y/n]
+Looks good? [y/n] (y):
 ```
 
 ## CLI reference
 
 | Command | Description |
 |---|---|
-| `forge start <project-name>` | Create a new Django project. Interactive wizard, or `--no-input` for defaults. |
-| `forge list` | Show all available frameworks, optional layers, and core layers. |
-| `forge add <layer>` | Add an optional layer to an existing project (works for all 11). |
-| `forge upgrade` | Re-apply the latest templates to an existing project. |
-| `forge --version` / `-V` | Print the forge version. |
-| `forge --help` / `-h` | Show help. `forge` with no arguments also shows help. |
+| `forge-django start <project-name>` | Create a new Django project. Interactive wizard, or `--no-input` for defaults. |
+| `forge-django list` | Show all available frameworks, optional layers, and core layers. |
+| `forge-django add <layer>` | Add an optional layer to an existing project (works for all 11). |
+| `forge-django upgrade` | Re-apply the latest templates to an existing project. |
+| `forge-django --version` / `-V` | Print the installed version. |
+| `forge-django --help` / `-h` | Show help. `forge-django` with no arguments also shows help. |
 
-### `forge start` flags
+### `forge-django start` flags
 
 | Flag | Description |
 |---|---|
 | `--no-input` | Skip all prompts and use sensible defaults (DRF, PostgreSQL + SQLite, no layers). Auto-activates in CI. |
 
-### `forge add` behavior
+### `forge-django add` behavior
 
 Runs from inside an existing project. It:
 - validates the layer name (`docker`, `celery`, `email`, `cache`, `social`,
@@ -149,7 +168,7 @@ Runs from inside an existing project. It:
 | Layer | What it adds | Deps |
 |---|---|---|
 | **Docker** | Multi-stage `Dockerfile` (uv build), `compose.yaml` with app + db + optional redis/mailpit, `.dockerignore`, gunicorn wired into the image | `gunicorn~=23.0` |
-| **Celery** | `config/celery.py`, `apps/accounts/tasks.py`, Redis broker + cache settings, worker-ready `__init__.py` | `celery~=5.4.0`, `redis>=5.0` |
+| **Celery** | `config/celery.py`, `apps/accounts/tasks.py`, Redis broker + cache settings, worker-ready `__init__.py` | `celery~=5.6.0`, `redis>=5.0` |
 | **Email** | Mailpit (dev) / SMTP (prod) settings, email env vars in `.env.example`, Mailpit Compose service | — |
 | **Caching** | Redis cache backend (`django.core.cache.backends.redis.RedisCache`) | `redis>=5.0` |
 | **Social Auth** | `SOCIALACCOUNT_PROVIDERS` for Google + GitHub, provider env vars | — |
@@ -170,7 +189,7 @@ Runs from inside an existing project. It:
 | **Auth** | Custom User model (email login), `django-allauth`, JWT or session |
 | **Database** | PostgreSQL (prod) + SQLite (dev), migration defaults |
 | **Async** | ASGI via `uvicorn`, async views, async ORM support |
-| **CI/CD** | GitHub Actions: lint, type-check, test, deploy-check |
+| **CI/CD** | GitHub Actions: lint, type-check, test |
 | **Admin** | Custom User admin |
 | **Logging** | Structured logging |
 | **Static/media** | WhiteNoise, django-storages-ready |
@@ -185,8 +204,8 @@ myproject/
 ├── Makefile                # see commands below
 ├── .env.example            # all environment variables documented
 ├── .gitignore              # .env ignored, .env.example tracked
-├── .forge.toml             # layer tracking — read by forge add/upgrade
-├── .forge-manifest.json    # ownership ledger — keeps your edits safe
+├── .forge.toml             # layer tracking — read by forge-django add/upgrade
+├── .forge-manifest.json    # ownership ledger: sha256 of every file forge generated
 ├── .pre-commit-config.yaml
 ├── config/
 │   ├── settings/           # base.py, dev.py, prod.py (split correctly)
@@ -232,30 +251,29 @@ myproject/
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth (Social Auth layer) |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth (Social Auth layer) |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_STORAGE_BUCKET_NAME` / `AWS_S3_ENDPOINT_URL` / `AWS_S3_REGION_NAME` | S3/MinIO (S3 Storage layer) |
-| `SENTRY_DSN` | Optional — leave empty to disable |
 
-## Adding layers later — `forge add`
+## Adding layers later — `forge-django add`
 
-Already have a project? Run `forge add <layer>` from its root directory —
+Already have a project? Run `forge-django add <layer>` from its root directory —
 works for **all 11 layers**.
 
 ```bash
 cd myproject
-forge add docker      # Dockerfile + compose.yaml + .dockerignore
-forge add healthcheck # /healthz endpoint
-forge add backup      # nightly DB dumps
+forge-django add docker      # Dockerfile + compose.yaml + .dockerignore
+forge-django add healthcheck # /healthz endpoint
+forge-django add backup      # nightly DB dumps
 ```
 
-## `forge upgrade`
+## `forge-django upgrade`
 
 Re-applies the latest templates to an existing project. It reads your
 `.forge.toml`, lists every file it would overwrite, and asks for
 confirmation before touching anything.
 
 **Your edits survive.** Every generated file is hashed into a
-`.forge-manifest.json`. On `forge add` / `forge upgrade`, forge refreshes
-files it still owns and **skips files you modified, byte for byte** — and
-the `SECRET_KEY` is read back from your project instead of being
+`.forge-manifest.json`. On `forge-django add` / `forge-django upgrade`, the CLI
+refreshes files it still owns and **skips files you modified, byte for byte** —
+and the `SECRET_KEY` is read back from your project instead of being
 regenerated.
 
 ## Automation
@@ -265,7 +283,7 @@ PostgreSQL + SQLite, no layers). CI environments (`CI=true`,
 `GITHUB_ACTIONS=true`) auto-activate this mode — perfect for pipelines.
 
 ```bash
-forge start myproject --no-input
+forge-django start myproject --no-input
 ```
 
 ## Landing page
@@ -304,17 +322,21 @@ tests/                  # pytest suite
 ## Development
 
 ```bash
-uv sync --all-extras --dev      # install dev deps
-uv run pytest                   # run the test suite
-uv run ruff check .             # lint
-uv run ruff format --check .    # formatting
-uv run ty check django_forge    # type check
+uv sync                            # install dev tooling (the [dependency-groups] dev group)
+uv run pytest                      # run the test suite
+uv run ruff check .                # lint
+uv run ruff format --check .       # formatting
+uv run ty check django_forge       # type check
 ```
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development loop, and report vulnerabilities privately as described in
+[SECURITY.md](SECURITY.md).
 
 ## Installation
 
 ```bash
-uv tool install django-forge
+uv tool install forge-django
 ```
 
 **Requires:** Python 3.10+ for the CLI tool, Python 3.12+ for generated projects.

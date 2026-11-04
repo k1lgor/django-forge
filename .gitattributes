@@ -1,0 +1,4 @@
+# Normalize line endings repo-wide; template files must ship LF byte-for-byte
+# (CI runs a grep for CR over django_forge/templates as a gate).
+* text=auto
+*.j2 text eol=lf

@@ -1,6 +1,8 @@
 """Tests for the forge CLI entry point."""
 
+import os
 import re
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -20,7 +22,7 @@ def test_version() -> None:
     """Running `forge --version` prints the correct version."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert f"forge v{__version__}" in result.stdout
+    assert f"forge-django v{__version__}" in result.stdout
 
 
 def test_help_shows_commands() -> None:
@@ -38,7 +40,9 @@ def test_start_help_shows_usage() -> None:
     result = runner.invoke(app, ["start", "--help"])
     assert result.exit_code == 0
     stdout = _plain(result.stdout)
-    assert "PROJECT_NAME" in stdout
+    # Typer <0.26 renders the metavar uppercase (PROJECT_NAME); newer lines
+    # render {project_name}. The argument must be documented either way.
+    assert "project_name" in stdout.lower()
     assert "--no-input" in stdout
 
 
@@ -64,17 +68,20 @@ def test_list_shows_available_options() -> None:
     assert "Core Layers" in result.stdout
 
 
-def test_add_rejects_non_forge_project() -> None:
+def test_add_rejects_non_forge_project(tmp_path: Path) -> None:
     """Running `forge add celery` outside a forge project shows error."""
+    # chdir: without it this picks up whatever directory an earlier test
+    # left as the process CWD (a real forge project) instead of "outside".
+    os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "celery"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Not a forge project" in result.stdout
 
 
 def test_add_unknown_layer() -> None:
     """Running `forge add foo` shows unknown layer error."""
     result = runner.invoke(app, ["add", "foo"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Unknown layer" in result.stdout
 
 
@@ -82,7 +89,7 @@ def test_import_version() -> None:
     """The package is importable and exposes __version__."""
     from django_forge import __version__ as ver
 
-    assert ver == "0.3.0"
+    assert ver == "0.4.0"
 
 
 def test_h_alias_shows_help() -> None:

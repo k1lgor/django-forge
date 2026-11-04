@@ -193,7 +193,7 @@ def test_all_six_layers_together(_mock_install, tmp_path: Path) -> None:
     assert "djangorestframework" in toml
     assert "redis>=" in toml
     assert "django-storages" in toml
-    assert "celery~=5.4.0" in toml
+    assert "celery~=5.6.0" in toml
 
 
 # ---------------------------------------------------------------------------
@@ -328,12 +328,22 @@ def test_add_then_start_preserves_context(_mock_install, tmp_path: Path) -> None
 @patch(_PATCH_PATH, return_value=True)
 @patch("django_forge.cli.add._confirm_existing_files", return_value=False)
 def test_add_cache_declined_no_files_changed(_mock_confirm, _mock_install, tmp_path: Path) -> None:
-    """forge add cache declined leaves no files changed."""
+    """forge add cache declined exits 1 and leaves no files changed."""
+    # A manifest-less project: every differing file is an overwrite candidate,
+    # so the refusal branch actually runs (design entry 28).
+    (tmp_path / ".forge.toml").write_text(
+        '[forge]\nversion = "0.1.0"\napi = "pure"\ndb = "sqlite"\nlayers = []\n'
+    )
+    (tmp_path / "manage.py").write_text("# OLD")
     os.chdir(tmp_path)
-    runner.invoke(app, ["start", "t"], input="\n\n0\nY\n")
-    os.chdir(tmp_path / "t")
     result = runner.invoke(app, ["add", "cache"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
+    assert "Added cache layer." not in result.stdout
+    assert (tmp_path / "manage.py").read_text() == "# OLD"
+    import tomli
+
+    data = tomli.loads((tmp_path / ".forge.toml").read_text())
+    assert "cache" not in data["forge"]["layers"]
     assert "No files were changed" in result.stdout
 
 
@@ -353,5 +363,6 @@ def test_add_on_non_forge_project(_mock_install, tmp_path: Path) -> None:
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "social"])
     assert (
-        "Run forge start myproject first" in result.stdout or "Not a forge project" in result.stdout
+        "Run forge-django start myproject first" in result.stdout
+        or "Not a forge project" in result.stdout
     )

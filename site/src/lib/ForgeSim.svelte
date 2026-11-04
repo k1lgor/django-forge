@@ -7,11 +7,13 @@
   let phase = $state("idle"); // idle | forging | done
   let t0 = $state(0);
   let elapsed = $state(0);
-  let visibleFiles = $state([]); // {path, source, lines, revealed}
-  let currentFile = $state(null);
+  let visibleFiles = $state(/** @type {{ path: string, source: string, lines: string[], revealed: boolean }[]} */ ([])); // {path, source, lines, revealed}
+  let currentFile = $state(/** @type {{ path: string, source: string, lines: string[] } | null} */ (null));
   let typedLine = $state("");
-  let timerId = null;
+  /** @type {ReturnType<typeof setInterval> | undefined} */
+  let timerId = undefined;
 
+  /** @param {string} id */
   function toggleLayer(id) {
     selected = selected.includes(id) ? selected.filter((l) => l !== id) : [...selected, id];
   }
@@ -30,6 +32,11 @@
     forge(files, 0, performance.now());
   }
 
+  /**
+   * @param {{ path: string, source: string, lines: string[] }[]} files
+   * @param {number} index
+   * @param {number} start
+   */
   function forge(files, index, start) {
     if (index >= files.length) {
       finishForge();
@@ -68,6 +75,7 @@
     if (phase === "done") clearInterval(timerId);
   }
 
+  /** @param {number} s */
   function fmt(s) {
     const m = Math.floor(s / 60);
     const ss = Math.floor(s % 60);

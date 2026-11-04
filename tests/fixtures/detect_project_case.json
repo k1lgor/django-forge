@@ -1,0 +1,13 @@
+{
+  "toml": "[forge]\nversion = \"0.3.0\"\napi = \"ninja\"\ndb = \"sqlite\"\nlayers = [\n    \"docker\",  # infra\n    \"celery\",\n]\n\n[database]\nengine = \"postgresql\"\n",
+  "state": {
+    "api": "ninja",
+    "db": "sqlite",
+    "layers": [
+      "docker",
+      "celery"
+    ],
+    "project_name": "detected-project",
+    "project_slug": "detected_project"
+  }
+}

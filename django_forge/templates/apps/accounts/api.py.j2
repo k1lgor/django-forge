@@ -2,10 +2,11 @@
 
 Conditional on whether DRF or Ninja is selected.
 """
-
 {% if use_drf %}
 from django.contrib.auth import get_user_model
+from django.urls import include
 from rest_framework import serializers, viewsets
+from rest_framework.routers import DefaultRouter
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -23,8 +24,14 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
 
+
+router = DefaultRouter()
+router.register(r"users", UserViewSet)
+
+api_urls = include(router.urls)
 {% elif use_ninja %}
-from ninja import ModelSchema, Router
+from django.urls import include
+from ninja import ModelSchema, NinjaAPI, Router
 
 from apps.accounts.models import User
 
@@ -41,12 +48,20 @@ router = Router()
 
 
 @router.get("/users", response=list[UserSchema])
-def list_users(request):
+def list_users(request):  # noqa: ARG001 — ninja injects the request positionally
     """List all users."""
     return User.objects.all()
 
-{%- else %}
-# No API framework selected — views.py handles routing instead.
-# If you add DRF or Ninja later, enable it in pyproject.toml
-# and update this file.
+
+api = NinjaAPI()
+api.add_router("", router)
+
+# ninja's .urls is a (patterns, app_name, namespace) 3-tuple — Django 6's
+# include() rejects 3-tuples, so split it here; the namespace is required
+# because ninja reverses its own `api-<version>` namespace at request time.
+api_urls = include(api.urls[:2], namespace=api.urls[2])
+{% else %}
+# No API framework selected — config/urls.py mounts neither api_urls nor
+# accounts/api. If you add DRF or Ninja later, enable the dependency in
+# pyproject.toml and update this file plus config/urls.py.
 {% endif %}

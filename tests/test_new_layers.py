@@ -1,6 +1,7 @@
 """Tests for the v0.3 optional layers: healthcheck, audit, backup, seed, preflight."""
 
 import os
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -78,7 +79,9 @@ def test_audit_wires_history_on_user(_mock_install, tmp_path: Path) -> None:
     project = _start_and_cd(tmp_path, "\n\n8\nY\n")
     models = (project / "apps" / "accounts" / "models.py").read_text()
     assert "HistoricalRecords" in models
-    assert "history = HistoricalRecords()" in models
+    # `history` is wired as a HistoricalRecords descriptor on the User model
+    # (annotated `ClassVar[HistoricalRecords]` since 0.4).
+    assert re.search(r"^\s*history\b.*=\s*HistoricalRecords\(\)", models, re.MULTILINE)
     base = (project / "config" / "settings" / "base.py").read_text()
     assert '"simple_history",' in base
     assert "simple_history.middleware.HistoryRequestMiddleware" in base
@@ -222,5 +225,5 @@ def test_unknown_new_layer_still_rejected(tmp_path: Path) -> None:
     """Unknown layer names are still rejected."""
     os.chdir(tmp_path)
     result = runner.invoke(app, ["add", "quantum"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Unknown layer" in result.stdout

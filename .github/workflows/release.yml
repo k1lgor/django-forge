@@ -1,0 +1,196 @@
+# Release pipeline: tag push -> build/verify -> OIDC trusted publishing.
+#
+# EXTERNAL PREREQUISITE (must exist before the first tag): an OIDC trusted
+# publisher registered on PyPI and TestPyPI for this repository
+# (plamen/django-forge -> workflow release.yml -> environment `pypi`), and a
+# `pypi` GitHub Environment with required reviewers configured in the repo
+# settings. No long-lived token exists anywhere in this workflow.
+#
+# The preflight enforces (design entry 48): the distribution name and the
+# console script must still be `forge-django` (drift fails), the target
+# version must not already exist on the target index, and a taken name with a
+# brand-new version only proceeds because PyPI's trusted-publisher binding
+# rejects uploads for projects this repository does not own — the hard
+# ownership check lives server-side.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      index:
+        description: Target package index (dry-run against TestPyPI first)
+        type: choice
+        required: true
+        default: testpypi
+        options:
+          - pypi
+          - testpypi
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & verify artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Preflight (name & console script & version on target index)
+        env:
+          TARGET_INDEX: ${{ inputs.index || 'pypi' }}
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+          import sys
+          import tomllib
+          import urllib.error
+          import urllib.request
+
+          with open("pyproject.toml", "rb") as fh:
+              project = tomllib.load(fh)["project"]
+
+          name = project["name"]
+          version = project["version"]
+          scripts = project.get("scripts", {})
+
+          errors = []
+          if name != "forge-django":
+              errors.append(f"distribution name drifted: {name!r} != 'forge-django'")
+          if "forge-django" not in scripts:
+              errors.append(
+                  "console script 'forge-django' missing from [project.scripts]: "
+                  f"{sorted(scripts)}"
+              )
+
+          index = os.environ.get("TARGET_INDEX", "pypi")
+          base = "https://pypi.org" if index == "pypi" else "https://test.pypi.org"
+          try:
+              with urllib.request.urlopen(f"{base}/pypi/{name}/json", timeout=20) as resp:
+                  data = json.load(resp)
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise
+              print(f"{name} is free on {index} - first publish")
+              data = None
+
+          if data is not None:
+              releases = data.get("releases", {})
+              if version in releases and releases[version]:
+                  errors.append(
+                      f"{name} {version} already exists on {index} - bump the version"
+                  )
+              else:
+                  print(
+                      f"{name} exists on {index} but {version} is new "
+                      "(prior releases are this project's)"
+                  )
+
+          if errors:
+              print("preflight failed:")
+              for line in errors:
+                  print(f"  - {line}")
+              sys.exit(1)
+          print(f"preflight ok: {name} {version} -> {index}")
+          EOF
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Twine check
+        run: uvx twine check dist/*
+
+      - name: Wheel contains every tracked template
+        run: |
+          python3 - <<'EOF'
+          import glob
+          import subprocess
+          import sys
+          import zipfile
+
+          tracked = subprocess.run(
+              ["git", "ls-files", "django_forge/templates"],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+          wheel = glob.glob("dist/*.whl")[0]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          missing = [f for f in tracked if f not in names]
+          if missing:
+              print("missing from wheel:")
+              for m in missing:
+                  print(f"  {m}")
+              sys.exit(1)
+          print(f"wheel ok: all {len(tracked)} tracked templates present")
+          EOF
+
+      - name: Install the wheel in a clean environment and scaffold once
+        run: |
+          uv tool install dist/*.whl
+          cd "$RUNNER_TEMP"
+          forge-django start release-smoke --no-input --db sqlite
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to ${{ inputs.index || 'pypi' }}
+    needs: build
+    runs-on: ubuntu-latest
+    # Required reviewers are configured on this environment in repo settings.
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-check name and console script immediately before upload
+        run: |
+          python3 - <<'EOF'
+          import sys
+          import tomllib
+
+          with open("pyproject.toml", "rb") as fh:
+              project = tomllib.load(fh)["project"]
+
+          errors = []
+          if project["name"] != "forge-django":
+              errors.append(f"distribution name drifted: {project['name']!r}")
+          if "forge-django" not in project.get("scripts", {}):
+              errors.append("console script 'forge-django' no longer declared")
+
+          if errors:
+              print("pre-upload check failed:")
+              for line in errors:
+                  print(f"  - {line}")
+              sys.exit(1)
+          print("pre-upload check ok: forge-django name + console script intact")
+          EOF
+
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish with trusted publishing (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ inputs.index == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://pypi.org/legacy/' }}

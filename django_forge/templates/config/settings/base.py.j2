@@ -1,25 +1,39 @@
 """Django settings for {{ project_name }}."""
 
 from pathlib import Path
+from typing import Annotated
 
-from pydantic_settings import BaseSettings
+import dj_database_url
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("allowed_hosts", "cors_allowed_origins", mode="before")
+    @classmethod
+    def _split_csv(cls, value: object) -> object:
+        """Accept comma-separated environment values (ALLOWED_HOSTS=a,b) as lists."""
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
     # Django
-    django_secret_key: str = "{{ secret_key }}"
+    django_secret_key: str
     django_debug: bool = True
-    allowed_hosts: list[str] = ["localhost", "127.0.0.1", "0.0.0.0"]
+    # NoDecode: env/dotenv sources must hand raw strings to the CSV validator
+    # below instead of JSON-decoding them (pydantic-settings >=2.3).
+    allowed_hosts: Annotated[list[str], NoDecode] = ["localhost", "127.0.0.1", "0.0.0.0"]
 
     # Database
-{%- if db == "postgres" -%}
-    database_url: str = "sqlite:///local.sqlite3"
+{% if db == "postgres" %}
+    database_url: str = "postgresql://postgres:***@localhost:5432/{{ project_slug }}"
 {% else %}
     database_url: str = "sqlite:///local.sqlite3"
-{%- endif -%}
-
+{% endif %}
 {% if has_celery %}    # Celery
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
@@ -43,7 +57,7 @@ class Settings(BaseSettings):
     aws_s3_region_name: str = "us-east-1"
 
 {% endif %}    # Security
-    cors_allowed_origins: list[str] = ["http://localhost:8000"]
+    cors_allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:8000"]
 
 
 settings = Settings()
@@ -135,39 +149,10 @@ ASGI_APPLICATION = "config.asgi.application"
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-{%- if db == "postgres" %}
-import re
-
-_db_match = re.match(
-    r"(?P<engine>\w+)://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>\d+)/(?P<name>.+)",
-    settings.database_url,
-)
-if _db_match and _db_match.group("engine") == "postgresql":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": _db_match.group("name"),
-            "USER": _db_match.group("user"),
-            "PASSWORD": _db_match.group("password"),
-            "HOST": _db_match.group("host"),
-            "PORT": int(_db_match.group("port")),
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "local.sqlite3",
-        }
-    }
-{%- else %}
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "local.sqlite3",
-    }
-}
-{%- endif %}
+try:
+    DATABASES = {"default": dj_database_url.config(default=settings.database_url)}
+except ValueError as exc:
+    raise ValueError(f"DATABASE_URL is set but unparsable: {exc}") from exc
 
 # ---------------------------------------------------------------------------
 # Authentication
@@ -328,4 +313,3 @@ LOGGING = {
 # Default primary key field type
 # ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-

@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 @receiver(post_save, sender=User)
-def user_post_save(sender, instance, created, **kwargs):  # type: ignore[no-untyped-def]
+def user_post_save(sender, instance, created, **kwargs):  # noqa: ARG001
     """Log when a new user is created."""
     if created:
         logger.info("User created: %s", instance.email)

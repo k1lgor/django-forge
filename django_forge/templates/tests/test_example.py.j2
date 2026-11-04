@@ -1,4 +1,6 @@
-"""Example test that verifies pytest-django is configured correctly."""
+"""Example tests that verify pytest-django and the shipped settings boot."""
+
+import importlib
 
 import pytest
 from django.conf import settings
@@ -9,3 +11,9 @@ def test_settings_importable() -> None:
     """Django settings are importable and have the expected configuration."""
     assert settings.DEBUG is True
     assert "apps.accounts" in settings.INSTALLED_APPS
+
+
+def test_all_shipped_settings_modules_import() -> None:
+    """Every DJANGO_SETTINGS_MODULE value this project documents boots cleanly."""
+    for module_name in ("config.settings.base", "config.settings.prod", "config.settings.dev"):
+        importlib.import_module(module_name)

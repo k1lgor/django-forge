@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from django_forge.cli.prefs import _prefs_file, load_prefs, save_prefs
+from django_forge.registry import LAYERS
 
 
 class TestPrefsFile:
@@ -96,6 +97,20 @@ class TestSaveLoad:
         with patch("django_forge.cli.prefs._prefs_file", return_value=prefs_file):
             loaded = load_prefs()
             assert loaded["layers"] == ["docker", "celery"]
+
+    def test_roundtrip_preserves_all_eleven_layers(self, tmp_path: Path) -> None:
+        """All eleven registry layers survive save -> load (design entry 40).
+
+        Before the registry-derived whitelist, five ids (healthcheck, audit,
+        backup, seed, preflight) were silently dropped on load.
+        """
+        all_layers = [layer.id for layer in LAYERS]
+        assert len(all_layers) == 11 and len(set(all_layers)) == 11
+        prefs_file = tmp_path / "prefs.json"
+        with patch("django_forge.cli.prefs._prefs_file", return_value=prefs_file):
+            save_prefs(api="drf", db="postgres", layers=all_layers)
+            loaded = load_prefs()
+            assert loaded["layers"] == all_layers
 
     def test_save_creates_parent_directories(self, tmp_path: Path) -> None:
         prefs_file = tmp_path / "deeply" / "nested" / "prefs.json"

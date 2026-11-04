@@ -6,7 +6,7 @@
   <h2 class="sec-title">your edits <span class="c-accent">survive</span></h2>
   <p class="sub c-dim">
     forge writes a manifest (`.forge-manifest.json`) hashing every file it produces. <br>
-    on <code>forge add</code>/<code>forge upgrade</code>, pristine files are refreshed —
+    on <code>forge-django add</code>/<code>forge-django upgrade</code>, pristine files are refreshed —
     files you modified are skipped, byte for byte.
   </p>
 

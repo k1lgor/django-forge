@@ -24,6 +24,12 @@ class Renderer:
     directory mapping each written file to the sha256 of the bytes forge last
     wrote. Re-renders with ``policy="pristine"`` use that manifest to leave
     user-edited or user-created files untouched.
+
+    Missing-manifest policy: no manifest means no trustworthy baseline, so a
+    pristine re-render cannot tell forge's files from the user's — callers
+    refuse and ask before overwriting in that state (M8, see
+    ``cli/upgrade.py``). The manifest write runs in a ``finally`` so a crash
+    mid-render can never strand the baseline half-updated.
     """
 
     def __init__(self, template_root: Path) -> None:
@@ -84,51 +90,95 @@ class Renderer:
         written: list[tuple[Path, int]] = []
         template_sha = _template_tree_sha(self.template_root)
 
+        try:
+            for template_path in sorted(self.template_root.rglob("*")):
+                if not template_path.is_file():
+                    continue
+
+                rel_path = template_path.relative_to(self.template_root)
+                output_name = self._output_name(rel_path)
+                output_path = target_dir / output_name
+
+                # Never write through a symlink that escapes the project root.
+                if not output_path.resolve().is_relative_to(target_root):
+                    raise RuntimeError(
+                        f"Refusing to write {output_name}: resolves outside "
+                        f"the project directory ({target_root})"
+                    )
+
+                if rel_path.suffix == ".j2":
+                    template = self._env.get_template(str(rel_path.as_posix()))
+                    rendered = template.render(**context)
+                else:
+                    rendered = template_path.read_text(encoding="utf-8")
+
+                # Skip files that rendered to empty due to Jinja2 conditionals.
+                # If the template itself had content (like {% if has_docker %}) but
+                # rendered to empty, the conditional was false — skip the file.
+                # If the template was already empty (like __init__.py.j2), keep it.
+                if not rendered.strip():
+                    template_source = template_path.read_text(encoding="utf-8")
+                    if template_source.strip():
+                        continue
+
+                key = output_name.as_posix()
+                if policy == "pristine" and manifest is not None and output_path.exists():
+                    previous = manifest.get("files", {}).get(key)
+                    if previous is None or _sha256_file(output_path) != previous:
+                        self.skipped.append((output_name, "user-modified"))
+                        continue
+
+                _atomic_write_text(output_path, rendered)
+                written.append((output_name, len(rendered.encode("utf-8"))))
+                files[key] = _sha256_bytes(rendered.encode("utf-8"))
+
+        finally:
+            if written:
+                _write_manifest(target_dir, template_sha, files, forge_version)
+
+        return written
+
+    def preview_overwrites(self, context: dict, target_dir: Path) -> list[tuple[Path, str]]:
+        """Files a ``policy="pristine"`` render would rewrite for *context*.
+
+        A file qualifies when it exists on disk and its fresh bytes differ
+        from what is on disk, and pristine policy would not skip it: with a
+        manifest present the file must still hash to what forge last wrote
+        (unmodified — user-modified and user-created files are excluded);
+        with no manifest the baseline is unknown, every existing file counts
+        (see the missing-manifest policy in the class docstring — callers
+        must confirm before overwriting). Reuses ``_sha256_file`` and the
+        manifest read; nothing is written to disk.
+        """
+        target_dir = Path(target_dir)
+        manifest = _read_manifest(target_dir)
+        manifest_files = dict(manifest.get("files", {})) if manifest else {}
+        out: list[tuple[Path, str]] = []
         for template_path in sorted(self.template_root.rglob("*")):
             if not template_path.is_file():
                 continue
-
             rel_path = template_path.relative_to(self.template_root)
             output_name = self._output_name(rel_path)
             output_path = target_dir / output_name
-
-            # Never write through a symlink that escapes the project root.
-            if not output_path.resolve().is_relative_to(target_root):
-                raise RuntimeError(
-                    f"Refusing to write {output_name}: resolves outside "
-                    f"the project directory ({target_root})"
-                )
-
+            if not output_path.exists():
+                continue
             if rel_path.suffix == ".j2":
                 template = self._env.get_template(str(rel_path.as_posix()))
                 rendered = template.render(**context)
             else:
                 rendered = template_path.read_text(encoding="utf-8")
-
-            # Skip files that rendered to empty due to Jinja2 conditionals.
-            # If the template itself had content (like {% if has_docker %}) but
-            # rendered to empty, the conditional was false — skip the file.
-            # If the template was already empty (like __init__.py.j2), keep it.
-            if not rendered.strip():
-                template_source = template_path.read_text(encoding="utf-8")
-                if template_source.strip():
-                    continue
-
-            key = output_name.as_posix()
-            if policy == "pristine" and manifest is not None and output_path.exists():
-                previous = manifest.get("files", {}).get(key)
-                if previous is None or _sha256_file(output_path) != previous:
-                    self.skipped.append((output_name, "user-modified"))
-                    continue
-
-            _atomic_write_text(output_path, rendered)
-            written.append((output_name, len(rendered.encode("utf-8"))))
-            files[key] = _sha256_bytes(rendered.encode("utf-8"))
-
-        if written:
-            _write_manifest(target_dir, template_sha, files, forge_version)
-
-        return written
+            if not rendered.strip() and template_path.read_text(encoding="utf-8").strip():
+                continue  # conditional rendered empty — render_project skips it too
+            if manifest is not None:
+                previous = manifest_files.get(output_name.as_posix())
+                if previous is None:
+                    continue  # user-created: pristine skips it
+                if _sha256_file(output_path) != previous:
+                    continue  # user-modified: pristine skips it
+            if output_path.read_bytes() == rendered.encode("utf-8"):
+                continue  # identical bytes — nothing would change
+            out.append((output_path, str(output_name)))
+        return out
 
     @staticmethod
     def _output_name(rel_path: Path) -> Path:

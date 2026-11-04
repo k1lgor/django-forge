@@ -11,15 +11,18 @@
   let started = $state(reduced || bootedOnce);
   const animate = !reduced && !bootedOnce;
 
-  const bannerLen = BOOT_LINES[0].text.length + 1; // + newline
-  const taglineLen = BOOT_LINES[1].text.length;
+  // BOOT_LINES mixes entry shapes, so `.text` types as string | undefined
+  const bannerSrc = BOOT_LINES[0].text ?? "";
+  const taglineSrc = BOOT_LINES[1].text ?? "";
+  const bannerLen = bannerSrc.length + 1; // + newline
+  const taglineLen = taglineSrc.length;
   const total = bannerLen + taglineLen;
 
   const bannerText = $derived(
-    BOOT_LINES[0].text.slice(0, Math.min(typed, BOOT_LINES[0].text.length)),
+    bannerSrc.slice(0, Math.min(typed, bannerSrc.length)),
   );
   const taglineText = $derived(
-    BOOT_LINES[1].text.slice(0, Math.max(0, Math.min(taglineLen, typed - bannerLen))),
+    taglineSrc.slice(0, Math.max(0, Math.min(taglineLen, typed - bannerLen))),
   );
   const typing = $derived(typed < total);
 
@@ -64,7 +67,7 @@
 
 <section class="boot" id="boot" aria-label="forge boot sequence">
   <div class="term" role="img" aria-label="terminal boot sequence">
-    <span class="type c-cyan">{bannerText}{#if typing && bannerText.length < BOOT_LINES[0].text.length}<span class="cursor">▍</span>{/if}</span>
+    <span class="type c-cyan">{bannerText}{#if typing && bannerText.length < bannerSrc.length}<span class="cursor">▍</span>{/if}</span>
     <span class="type c-dim">{taglineText}{#if typing && taglineText.length === taglineLen}<span class="cursor">▍</span>{/if}</span>
     {#each BOOT_LINES.slice(2) as line, i (line.text ?? line.label)}
       {#if line.kind === "led"}
