@@ -280,3 +280,17 @@ def test_pyproject_ninja_cell_pins_ninja_jwt() -> None:
         data = _load_pyproject(target)
         assert "django-ninja-jwt>=5.1,<6" in data["project"]["dependencies"]
         assert "django-ninja~=1.7.0" in data["project"]["dependencies"]
+
+
+def test_postgres_renders_include_psycopg_driver() -> None:
+    """db=postgres ships psycopg; sqlite renders must not (e2e postgres cells)."""
+    renderer = Renderer(PROJECT_TEMPLATES)
+    for db, expect_driver in (("postgres", True), ("sqlite", False)):
+        ctx = dict(MINIMAL_CONTEXT)
+        ctx["db"] = db
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            renderer.render_project(ctx, target)
+            deps = _load_pyproject(target)["project"]["dependencies"]
+        has_driver = any(dep.startswith("psycopg") for dep in deps)
+        assert has_driver is expect_driver, (db, deps)
